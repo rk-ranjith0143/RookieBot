@@ -33,6 +33,27 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
 
 ---
 
+## Project Structure
+
+```text
+discord-utility-bot/
+├── cogs/
+│   ├── automod.py       # Anti-invite links, mass-mention block, and anti-spam flood protection
+│   ├── events.py        # Welcome greetings (on_member_join) and ready events
+│   ├── moderation.py    # /kick, /ban, /unban, /timeout, /untimeout, and /clear
+│   ├── polls.py         # /poll (up to 10 options or Yes/No) and /giveaway
+│   ├── roles.py         # Persistent button self-role panels (/rolepanel) and /role
+│   └── utility.py       # !ping, /hello, /roll, /serverinfo, /userinfo, /avatar
+├── bot.py               # Main bot launcher and extension manager
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
+---
+
 ## Prerequisites
 
 - Python 3.10+
