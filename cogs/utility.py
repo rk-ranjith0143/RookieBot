@@ -18,6 +18,27 @@ class Utility(commands.Cog):
         latency_ms = round(self.bot.latency * 1000)
         await ctx.send(f"🏓 Pong! Latency: **{latency_ms}ms**")
 
+    @commands.command(name="sync")
+    @commands.has_permissions(administrator=True)
+    async def sync(self, ctx: commands.Context):
+        """Instantly sync all slash commands directly to this server."""
+        if not ctx.guild:
+            await ctx.send("❌ This command can only be used in a server.")
+            return
+
+        status_msg = await ctx.send("🔄 Syncing slash commands directly to this server...")
+        try:
+            self.bot.tree.copy_global_to(guild=ctx.guild)
+            synced = await self.bot.tree.sync(guild=ctx.guild)
+            await status_msg.edit(
+                content=(
+                    f"✅ Successfully synced **{len(synced)}** slash command(s) to **{ctx.guild.name}**!\n"
+                    "*(Tip: If they don't appear in your `/` menu immediately, press **Ctrl + R** to reload Discord!)*"
+                )
+            )
+        except Exception as e:
+            await status_msg.edit(content=f"❌ Failed to sync slash commands: `{e}`")
+
     @app_commands.command(name="hello", description="Get a friendly greeting from the bot")
     async def hello(self, interaction: discord.Interaction):
         """Friendly greeting command."""

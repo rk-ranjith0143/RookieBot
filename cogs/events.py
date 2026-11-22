@@ -12,6 +12,16 @@ class Events(commands.Cog):
     async def on_ready(self):
         """Fires when bot is connected and ready."""
         print(f"Logged in as {self.bot.user} (ID: {self.bot.user.id})")
+
+        # Automatically sync commands to all connected guilds for instant availability
+        for guild in self.bot.guilds:
+            try:
+                self.bot.tree.copy_global_to(guild=guild)
+                synced = await self.bot.tree.sync(guild=guild)
+                print(f"✅ Instantly synced {len(synced)} slash commands to guild: {guild.name} ({guild.id})")
+            except Exception as e:
+                print(f"⚠️ Could not guild-sync to {guild.name}: {e}")
+
         print("Bot is ready and operational!")
 
     @commands.Cog.listener()
