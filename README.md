@@ -12,6 +12,9 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
   - `/timeout`: Mute/timeout disruptive users for a configurable duration (up to 28 days) with automatic DM notice.
   - `/untimeout`: Remove an active timeout from a member.
 - **🎲 Fun & Utilities**:
+  - `/serverinfo`: Detailed server statistics, creation date, member breakdown, channels, and boost level.
+  - `/userinfo`: Deep profile details for any member (join/creation dates, roles, key permissions).
+  - `/avatar`: High-resolution avatar viewer with direct PNG/JPG/WEBP download links.
   - `/roll`: Roll a customizable die (default 6-sided).
   - `/hello`: Friendly welcome greeting.
   - `!ping`: Check bot response latency.
