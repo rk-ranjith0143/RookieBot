@@ -7,6 +7,9 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
 - **👋 Welcome Greetings (`on_member_join`)**: Automatically greets new members when they join the server with an informative embed displaying join count and account age.
 - **📊 Interactive Polls (`/poll`)**: Run polls with up to 10 custom options (auto-adds numbered reaction buttons) or create quick Yes/No polls.
 - **🎉 Giveaways (`/giveaway`)**: Host timed giveaways with reaction entry and automatic random winner selection.
+- **🎭 Interactive Self-Roles (`discord.ui.View`)**:
+  - `/rolepanel`: Create persistent interactive button self-role panels (up to 5 roles per panel) that survive bot restarts.
+  - `/role`: Moderator command to quickly toggle or assign/remove any role from a member.
 - **🛡️ Moderation Suite**:
   - `/kick`: Kick members with permission checks, role hierarchy validation, and audit reason logging.
   - `/ban`: Ban members or users with optional message deletion (up to 7 days) and DM notice.
@@ -84,6 +87,7 @@ In the [Discord Developer Portal](https://discord.com/developers/applications):
    - `Ban Members`
    - `Moderate Members` (for timeouts)
    - `Manage Messages` (for `/clear`)
+   - `Manage Roles` (for `/rolepanel` and `/role`)
 
 ### 6. Run the Bot
 ```bash
