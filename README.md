@@ -7,10 +7,13 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
 - **👋 Welcome Greetings (`on_member_join`)**: Automatically greets new members when they join the server with an informative embed displaying join count and account age.
 - **📊 Interactive Polls (`/poll`)**: Run polls with up to 10 custom options (auto-adds numbered reaction buttons) or create quick Yes/No polls.
 - **🎉 Giveaways (`/giveaway`)**: Host timed giveaways with reaction entry and automatic random winner selection.
-- **🛡️ Moderation Commands**:
+- **🛡️ Moderation Suite**:
   - `/kick`: Kick members with permission checks, role hierarchy validation, and audit reason logging.
+  - `/ban`: Ban members or users with optional message deletion (up to 7 days) and DM notice.
+  - `/unban`: Revoke a user's ban using their Discord User ID.
   - `/timeout`: Mute/timeout disruptive users for a configurable duration (up to 28 days) with automatic DM notice.
   - `/untimeout`: Remove an active timeout from a member.
+  - `/clear`: Bulk purge up to 100 messages from the channel, with optional member filtering.
 - **🎲 Fun & Utilities**:
   - `/serverinfo`: Detailed server statistics, creation date, member breakdown, channels, and boost level.
   - `/userinfo`: Deep profile details for any member (join/creation dates, roles, key permissions).
@@ -78,7 +81,9 @@ In the [Discord Developer Portal](https://discord.com/developers/applications):
    - `Add Reactions`
    - `Read Message History`
    - `Kick Members`
+   - `Ban Members`
    - `Moderate Members` (for timeouts)
+   - `Manage Messages` (for `/clear`)
 
 ### 6. Run the Bot
 ```bash
