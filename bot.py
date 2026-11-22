@@ -4,6 +4,8 @@ from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from database import init_db
+
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -20,6 +22,9 @@ class UtilityBot(commands.Bot):
 
     async def setup_hook(self):
         """Asynchronous initialization hook called before the bot connects."""
+        # Initialize persistent multi-tenant database
+        await init_db()
+
         cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
         for filename in sorted(os.listdir(cogs_dir)):
             if filename.endswith(".py") and not filename.startswith("__"):

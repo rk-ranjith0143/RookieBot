@@ -8,19 +8,15 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from database import get_guild_settings, update_guild_setting
+
 INVITE_REGEX = re.compile(
     r"(?:https?://)?(?:www\.)?(?:discord\.(?:gg|io|me|li)|discord(?:app)?\.com/invite)/[a-zA-Z0-9]+",
     re.IGNORECASE,
 )
 
-AUTOMOD_CONFIG = {
-    "anti_invite": True,
-    "anti_spam": True,
-    "anti_mass_mention": True,
-    "max_mentions": 5,
-}
-
 SPAM_TRACKER = defaultdict(list)
+MAX_MENTIONS = 5
 
 
 def is_automod_exempt(member: discord.Member) -> bool:
@@ -47,6 +43,12 @@ class AutoMod(commands.Cog):
     @automod_group.command(name="status", description="View current auto-moderation filters and rules")
     async def automod_status(self, interaction: discord.Interaction):
         """Displays auto-moderation status and active protections."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        settings = await get_guild_settings(interaction.guild_id)
+
         embed = discord.Embed(
             title="🛡️ Auto-Moderation System Status",
             color=discord.Color.blue(),
@@ -54,17 +56,17 @@ class AutoMod(commands.Cog):
         )
         embed.add_field(
             name="🔗 Anti-Invite Links",
-            value="🟢 **Enabled** (Deletes unauthorized Discord invite links)" if AUTOMOD_CONFIG["anti_invite"] else "🔴 **Disabled**",
+            value="🟢 **Enabled**" if settings.get("anti_invite", 1) else "🔴 **Disabled**",
             inline=False,
         )
         embed.add_field(
             name="📢 Anti-Mass Mention",
-            value=f"🟢 **Enabled** (Blocks messages mentioning {AUTOMOD_CONFIG['max_mentions']}+ users)" if AUTOMOD_CONFIG["anti_mass_mention"] else "🔴 **Disabled**",
+            value=f"🟢 **Enabled** (Blocks {MAX_MENTIONS}+ users)" if settings.get("anti_mass_mention", 1) else "🔴 **Disabled**",
             inline=False,
         )
         embed.add_field(
             name="⚡ Anti-Spam / Flood",
-            value="🟢 **Enabled** (Deletes rapid flood > 5 msgs/5s; 1m timeout for 8+ msgs)" if AUTOMOD_CONFIG["anti_spam"] else "🔴 **Disabled**",
+            value="🟢 **Enabled** (Deletes rapid flood > 5 msgs/5s)" if settings.get("anti_spam", 1) else "🔴 **Disabled**",
             inline=False,
         )
         embed.add_field(
@@ -95,8 +97,12 @@ class AutoMod(commands.Cog):
         enabled: bool,
     ):
         """Toggles a specific auto-mod protection."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
         key = filter_name.value
-        AUTOMOD_CONFIG[key] = enabled
+        await update_guild_setting(interaction.guild_id, key, 1 if enabled else 0)
         state_str = "🟢 **Enabled**" if enabled else "🔴 **Disabled**"
 
         embed = discord.Embed(
@@ -117,8 +123,10 @@ class AutoMod(commands.Cog):
         author = message.author
 
         if isinstance(author, discord.Member) and not is_automod_exempt(author):
+            settings = await get_guild_settings(message.guild.id)
+
             # 1. Anti-Invite Links
-            if AUTOMOD_CONFIG["anti_invite"] and INVITE_REGEX.search(message.content):
+            if settings.get("anti_invite", 1) and INVITE_REGEX.search(message.content):
                 try:
                     await message.delete()
                     warn = await message.channel.send(
@@ -131,12 +139,12 @@ class AutoMod(commands.Cog):
                 return
 
             # 2. Anti-Mass Mentions
-            if AUTOMOD_CONFIG["anti_mass_mention"]:
+            if settings.get("anti_mass_mention", 1):
                 mention_count = len(message.mentions)
                 has_unauthorized_everyone = (
                     message.mention_everyone and not author.guild_permissions.mention_everyone
                 )
-                if mention_count >= AUTOMOD_CONFIG["max_mentions"] or has_unauthorized_everyone:
+                if mention_count >= MAX_MENTIONS or has_unauthorized_everyone:
                     try:
                         await message.delete()
                         warn = await message.channel.send(
@@ -149,7 +157,7 @@ class AutoMod(commands.Cog):
                     return
 
             # 3. Anti-Spam / Flood Detection
-            if AUTOMOD_CONFIG["anti_spam"]:
+            if settings.get("anti_spam", 1):
                 now = time.time()
                 user_times = SPAM_TRACKER[author.id]
                 valid_times = [t for t in user_times if now - t < 5.0]

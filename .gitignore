@@ -35,6 +35,11 @@ wheels/
 *.log
 logs/
 
+# Database files
+data/
+*.db
+*.sqlite3
+
 # IDE & Editor settings
 .vscode/
 .idea/

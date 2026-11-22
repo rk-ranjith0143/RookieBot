@@ -5,6 +5,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from database import is_guild_premium
+
 
 class Utility(commands.Cog):
     """General utility and informational commands."""
@@ -201,6 +203,63 @@ class Utility(commands.Cog):
 
         embed.description = f"**Download:** [PNG]({png_url}) | [JPG]({jpg_url}) | [WEBP]({webp_url})"
         embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="premium", description="View this server's subscription tier and Premium perks")
+    async def premium(self, interaction: discord.Interaction):
+        """Displays subscription status and instructions on upgrading to Premium."""
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        # Check native Discord entitlements or persistent database
+        has_discord_sub = any(not e.is_expired() for e in interaction.entitlements)
+        has_db_sub = await is_guild_premium(guild.id)
+        is_sub = has_discord_sub or has_db_sub
+
+        tier_title = "⭐ Premium Server" if is_sub else "Free Tier"
+        color = discord.Color.gold() if is_sub else discord.Color.blurple()
+
+        embed = discord.Embed(
+            title=f"💎 Server Subscription: {tier_title}",
+            description=(
+                "Your server has full access to all **⭐ Premium Perks**! Thank you for supporting the bot."
+                if is_sub
+                else "Upgrade this server to unlock exclusive automation, custom styling, and priority performance."
+            ),
+            color=color,
+            timestamp=discord.utils.utcnow(),
+        )
+
+        embed.add_field(
+            name="🆓 Free Tier Included",
+            value=(
+                "• All Moderation tools (`/kick`, `/ban`, `/timeout`, `/clear`)\n"
+                "• Interactive Polls & Giveaways\n"
+                "• Basic AutoMod (invites, mass mentions)\n"
+                "• Server & User Analytics"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="⭐ Premium Perks ($3.99/mo)",
+            value=(
+                "• **Unlimited Self-Role Panels** (Custom buttons & styles)\n"
+                "• **Advanced Auto-Mod Guard** (Phishing shield & strict flood protection)\n"
+                "• **Custom Welcome Banners & Embeds**\n"
+                "• **Priority 99.9% Cloud Uptime & Fast Response**\n"
+                "• **Direct Developer Support & Retainer Access**"
+            ),
+            inline=False,
+        )
+
+        if not is_sub:
+            embed.set_footer(text="Subscribe via Discord App Directory or contact your bot administrator.")
+        else:
+            embed.set_footer(text="Active Subscription • Thank you for your support!")
 
         await interaction.response.send_message(embed=embed)
 
