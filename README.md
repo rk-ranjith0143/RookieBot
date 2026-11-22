@@ -10,6 +10,12 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
 - **🎭 Interactive Self-Roles (`discord.ui.View`)**:
   - `/rolepanel`: Create persistent interactive button self-role panels (up to 5 roles per panel) that survive bot restarts.
   - `/role`: Moderator command to quickly toggle or assign/remove any role from a member.
+- **🛡️ Auto-Moderation & Message Filtering (`on_message`)**:
+  - **Anti-Invite Links**: Intercepts and auto-deletes unauthorized Discord invite links with temporary warning alerts.
+  - **Anti-Mass Mention**: Blocks messages tagging 5+ users or unauthorized `@everyone` / `@here` pings.
+  - **Anti-Spam / Flood Detection**: Automatically deletes rapid message floods (> 5 msgs in 5s) and issues timeouts (1 min) for persistent flooders (8+ msgs).
+  - `/automod status`: Check active filters and configuration.
+  - `/automod toggle`: Administrators can toggle individual protections on or off.
 - **🛡️ Moderation Suite**:
   - `/kick`: Kick members with permission checks, role hierarchy validation, and audit reason logging.
   - `/ban`: Ban members or users with optional message deletion (up to 7 days) and DM notice.
