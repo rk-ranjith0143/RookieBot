@@ -4,6 +4,16 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
 
 ## Features
 
+- **📩 Support Ticket System (`cogs/tickets.py`)**:
+  - `/ticketsetup`: Deploy an interactive ticket panel. Clicking "Open Ticket" generates a private channel for the user and staff with a persistent "Close Ticket" button.
+- **📋 Audit & Moderation Logs (`cogs/logging.py`)**:
+  - `/setlogs`: Designate a mod-log channel to track deleted messages, edited messages (with before/after diffs), member leaves, and ban events.
+- **📈 Leveling & XP Gamification (`cogs/leveling.py`)**:
+  - Automatic XP reward system for chatting (with cooldowns to prevent spam abuse).
+  - `/rank`: Inspect personal level, XP, and rank progress bar.
+  - `/leaderboard`: Display top 10 most active community members.
+- **🎨 Custom Embed Builder (`cogs/embeds.py`)**:
+  - `/embed`: Interactive modal popup to design and publish announcement embeds with custom colors, images, and footers.
 - **👋 Welcome Greetings (`on_member_join`)**: Automatically greets new members when they join the server with an informative embed displaying join count and account age.
 - **📊 Interactive Polls (`/poll`)**: Run polls with up to 10 custom options (auto-adds numbered reaction buttons) or create quick Yes/No polls.
 - **🎉 Giveaways (`/giveaway`)**: Host timed giveaways with reaction entry and automatic random winner selection.
@@ -39,12 +49,19 @@ A feature-rich utility Discord bot built with Python and [discord.py](https://di
 discord-utility-bot/
 ├── cogs/
 │   ├── automod.py       # Anti-invite links, mass-mention block, and anti-spam flood protection
+│   ├── embeds.py        # Interactive announcement embed modal (/embed)
 │   ├── events.py        # Welcome greetings (on_member_join) and ready events
+│   ├── leveling.py      # XP tracking, /rank progress cards, and /leaderboard
+│   ├── logging.py       # Audit logging for deleted/edited messages, bans, and leaves (/setlogs)
 │   ├── moderation.py    # /kick, /ban, /unban, /timeout, /untimeout, and /clear
 │   ├── polls.py         # /poll (up to 10 options or Yes/No) and /giveaway
 │   ├── roles.py         # Persistent button self-role panels (/rolepanel) and /role
-│   └── utility.py       # !ping, /hello, /roll, /serverinfo, /userinfo, /avatar
-├── bot.py               # Main bot launcher and extension manager
+│   ├── tickets.py       # Support ticket panels with private channels & close buttons (/ticketsetup)
+│   └── utility.py       # !ping, /hello, /roll, /serverinfo, /userinfo, /avatar, /premium
+├── bot.py               # Main bot launcher and dynamic extension manager
+├── database.py          # Asynchronous SQLite storage for multi-server settings & leveling
+├── Dockerfile           # Production container configuration
+├── docker-compose.yml   # 24/7 background service orchestration
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
