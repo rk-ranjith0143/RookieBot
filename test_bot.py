@@ -7,10 +7,13 @@ Auto-Mod Regex, UI Modals/Buttons, and Gamification logic.
 import os
 import sys
 import asyncio
+import datetime
 import tempfile
 import unittest
+from unittest.mock import AsyncMock, MagicMock
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 # Ensure project root is in sys.path
@@ -244,6 +247,122 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
 
         role_btn = RoleButton(role_id=12345, label="Member")
         self.assertTrue(role_btn.custom_id.startswith("selfrole:role:12345"))
+
+    # -----------------------------------------------------------------------
+    # 5. End-to-End Command Callback Runtime Execution Tests
+    # -----------------------------------------------------------------------
+
+    async def test_slash_command_runtime_execution(self):
+        """Execute all command callback functions with simulated Discord interactions."""
+        # 1. Setup mock Discord Guild
+        guild = MagicMock(spec=discord.Guild)
+        guild.id = 123456789
+        guild.name = "Test Guild"
+        guild.description = "Test Server Description"
+        guild.icon = None
+        guild.banner = None
+        guild.created_at = datetime.datetime.now(datetime.timezone.utc)
+        guild.member_count = 25
+        guild.members = []
+        guild.text_channels = []
+        guild.voice_channels = []
+        guild.stage_channels = []
+        guild.categories = []
+        guild.roles = []
+        guild.emojis = []
+        guild.stickers = []
+        guild.premium_tier = 0
+        guild.premium_subscription_count = 0
+        guild.verification_level = discord.VerificationLevel.low
+        guild.owner_id = 999999
+        guild.owner = MagicMock(spec=discord.Member)
+        guild.owner.mention = "@ServerOwner"
+        guild.me = MagicMock(spec=discord.Member)
+        guild.me.top_role = MagicMock()
+        guild.me.guild_permissions = discord.Permissions.all()
+
+        # 2. Setup mock Discord Member & User
+        user = MagicMock(spec=discord.Member)
+        user.id = 111111
+        user.name = "TestUser"
+        user.display_name = "TestUser"
+        user.mention = "@TestUser"
+        user.display_avatar = MagicMock()
+        user.display_avatar.url = "https://example.com/avatar.png"
+        user.display_avatar.with_size.return_value.url = "https://example.com/avatar1024.png"
+        user.display_avatar.with_format.return_value.url = "https://example.com/avatar.png"
+        user.color = discord.Color.blue()
+        user.bot = False
+        user.created_at = datetime.datetime.now(datetime.timezone.utc)
+        user.joined_at = datetime.datetime.now(datetime.timezone.utc)
+        user.top_role = MagicMock()
+        user.roles = []
+        user.guild_permissions = discord.Permissions.all()
+
+        # 3. Setup mock Channel
+        channel = MagicMock(spec=discord.TextChannel)
+        channel.id = 222222
+        channel.name = "general"
+        channel.mention = "#general"
+        channel.send = AsyncMock()
+        channel.purge = AsyncMock(return_value=[MagicMock(), MagicMock()])
+
+        # 4. Setup mock Interaction
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.guild = guild
+        interaction.guild_id = guild.id
+        interaction.user = user
+        interaction.channel = channel
+        interaction.response = AsyncMock()
+        interaction.followup = AsyncMock()
+        interaction.entitlements = []
+
+        # Utility Cog Commands
+        util = self.bot.get_cog("Utility")
+        await util.hello.callback(util, interaction)
+        await util.roll.callback(util, interaction, sides=6)
+        await util.serverinfo.callback(util, interaction)
+        await util.userinfo.callback(util, interaction, member=None)
+        await util.avatar.callback(util, interaction, user=None)
+        await util.premium.callback(util, interaction)
+
+        # Leveling Cog Commands
+        lvl = self.bot.get_cog("Leveling")
+        await lvl.leaderboard.callback(lvl, interaction)
+        await lvl.rank.callback(lvl, interaction, member=None)
+
+        # Embeds Cog Commands
+        emb = self.bot.get_cog("Embeds")
+        await emb.embed.callback(emb, interaction)
+
+        # Moderation Cog Commands
+        mod = self.bot.get_cog("Moderation")
+        await mod.clear.callback(mod, interaction, amount=2)
+        await mod.timeout.callback(mod, interaction, member=user, duration=5)
+        await mod.kick.callback(mod, interaction, member=user)
+
+        # Polls Cog Commands
+        polls = self.bot.get_cog("Polls")
+        msg_mock = AsyncMock()
+        interaction.original_response = AsyncMock(return_value=msg_mock)
+        await polls.poll.callback(polls, interaction, question="Favorite Language?", option1="Python", option2="Rust")
+
+        # Logging Cog Commands
+        logging_cog = self.bot.get_cog("Logging")
+        await logging_cog.setlogs.callback(logging_cog, interaction, channel=channel)
+
+        # Tickets Cog Commands
+        tix = self.bot.get_cog("Tickets")
+        await tix.ticketsetup.callback(tix, interaction, channel=channel)
+
+        # AutoMod Cog Commands
+        am = self.bot.get_cog("AutoMod")
+        await am.automod_status.callback(am, interaction)
+        choice_mock = app_commands.Choice(name="Anti-Invite Links", value="anti_invite")
+        await am.automod_toggle.callback(am, interaction, filter_name=choice_mock, enabled=True)
+
+        # Assert responses were sent without errors
+        self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)
 
 
 if __name__ == "__main__":
