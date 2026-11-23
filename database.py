@@ -144,12 +144,17 @@ def _add_user_xp_sync(
         if not row:
             xp = amount
             level = 1
+            leveled_up = False
+            while xp >= level * 100:
+                xp -= level * 100
+                level += 1
+                leveled_up = True
             cursor.execute(
                 "INSERT INTO user_levels (guild_id, user_id, xp, level, last_xp_time) VALUES (?, ?, ?, ?, ?)",
                 (guild_id, user_id, xp, level, now),
             )
             conn.commit()
-            return False, level, xp
+            return leveled_up, level, xp
 
         xp, level, last_time = row["xp"], row["level"], row["last_xp_time"]
 
