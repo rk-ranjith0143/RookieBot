@@ -108,9 +108,17 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/avatar [user]`: High-resolution avatar viewer with format downloads.
 - `/roll [sides]`: Customizable dice roll.
 - `/hello`: Bot greeting.
-- `/premium`: View premium features and server status.
 - `!ping`: Latency check.
 - `!sync`: Admin force sync slash commands to current guild.
+
+### 19. 💎 Monetization & License Keys (`cogs/premium.py`)
+- `/premium`: Interactive server subscription dashboard displaying active perks, expiration countdown, direct **💳 Buy Subscription** link button, and **🔑 Redeem License** modal.
+- `/redeem [key]`: Instant server upgrade with license keys (`PREM-XXXX-XXXX-XXXX`).
+- `/license generate [days] [note]`: Administrator command to generate unforgeable license keys for Stripe/Gumroad buyers.
+- `/license list`: View all active and redeemed keys in SQLite.
+- `/license revoke [guild_id]`: Revoke premium perks from a server.
+- Automated background task (`check_expirations_loop`) monitors subscription lifecycle and auto-expires overdue servers.
+- *For complete strategy and Stripe/Retainer setup, read [MONETIZATION.md](file:///d:/Discord_Projects/discord-utility-bot/MONETIZATION.md).*
 
 ---
 
@@ -128,6 +136,7 @@ discord-utility-bot/
 │   ├── logging.py       # Audit logging for edits, deletes, and bans (/setlogs)
 │   ├── moderation.py    # /kick, /ban, /unban, /timeout, /untimeout, /clear
 │   ├── polls.py         # /poll and timed /giveaway
+│   ├── premium.py       # Monetization engine, /premium, /redeem, and /license
 │   ├── reminders.py     # /remindme with background loop and SQLite queue
 │   ├── roles.py         # Persistent button self-role panels (/rolepanel)
 │   ├── serverstats.py   # Live locked voice stats channels (/serverstats)
@@ -136,10 +145,11 @@ discord-utility-bot/
 │   ├── suggestions.py   # Suggestions with persistent voting buttons (/suggest)
 │   ├── tags.py          # Custom tags & auto-FAQ with autocomplete (/tag)
 │   ├── tickets.py       # Support ticket panels with private channels (/ticketsetup)
-│   └── utility.py       # /serverinfo, /userinfo, /avatar, /roll, /premium, !ping, !sync
+│   └── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
 ├── bot.py               # Main bot launcher and dynamic extension loader
-├── database.py          # Asynchronous SQLite multi-tenant data layer
-├── test_bot.py          # Comprehensive 20-test automated test suite
+├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
+├── test_bot.py          # Comprehensive 24-test automated test suite
+├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
 ├── requirements.txt     # Python dependencies
@@ -151,19 +161,19 @@ discord-utility-bot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 18 Cogs, 37 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 19 Cogs, 39 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 20 test cases pass with a 100% success rate:
-- ✅ 18 Cogs discovery & extension loading
-- ✅ 37 Slash commands registered in command tree
-- ✅ Multi-tenant database operations (Leveling, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats)
+All 24 test cases pass with a 100% success rate:
+- ✅ 19 Cogs discovery & extension loading
+- ✅ 39 Slash commands registered in command tree
+- ✅ Multi-tenant database operations (Leveling, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
-- ✅ UI views & button custom IDs (Tickets, Roles, Suggestions)
+- ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium)
 - ✅ End-to-end slash command callback runtime execution
 
 ---

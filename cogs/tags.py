@@ -40,6 +40,19 @@ class Tags(commands.Cog):
             await interaction.response.send_message("Tag name cannot exceed 32 characters.", ephemeral=True)
             return
 
+        # Check Free tier limit (5 tags max for Free servers)
+        current_count = await database.get_guild_tag_count(interaction.guild.id)
+        if current_count >= 5:
+            is_premium = await database.is_guild_premium(interaction.guild.id)
+            if not is_premium:
+                await interaction.response.send_message(
+                    "⚠️ **Free Tier Limit Reached (5/5 Tags)!**\n"
+                    "This server has reached the maximum of 5 custom tags for the Free Tier.\n"
+                    "Upgrade to **⭐ Premium** with `/premium` to unlock unlimited tags!",
+                    ephemeral=True,
+                )
+                return
+
         success = await database.create_tag(
             guild_id=interaction.guild.id,
             tag_name=clean_name,

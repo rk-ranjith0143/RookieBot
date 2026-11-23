@@ -5,6 +5,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import database
 from database import (
     set_sticky_message,
     get_sticky_message,
@@ -34,8 +35,24 @@ class Sticky(commands.Cog):
             await interaction.response.send_message("❌ This command must be used in a text channel.", ephemeral=True)
             return
 
+        guild = interaction.guild
+        if guild:
+            existing = await get_sticky_message(channel.id)
+            if not existing:
+                sticky_count = await database.get_guild_sticky_count(guild.id)
+                if sticky_count >= 1:
+                    is_premium = await database.is_guild_premium(guild.id)
+                    if not is_premium:
+                        await interaction.response.send_message(
+                            "⚠️ **Free Tier Limit Reached (1 Sticky Message)!**\n"
+                            "Free servers can only have 1 active sticky notice at a time.\n"
+                            "Upgrade to **⭐ Premium** with `/premium` to enable sticky messages across unlimited channels!",
+                            ephemeral=True,
+                        )
+                        return
+
         clean_text = message.strip()[:2000]
-        await set_sticky_message(channel.id, clean_text)
+        await set_sticky_message(channel.id, clean_text, guild_id=guild.id if guild else None)
 
         embed = discord.Embed(
             title="📌 Pinned Notice",

@@ -26,6 +26,7 @@ from cogs.automod import INVITE_REGEX
 from cogs.roles import RoleButton
 from cogs.tickets import TicketLaunchView, CloseTicketView
 from cogs.suggestions import SuggestionVoteView
+from cogs.premium import PremiumUpgradeView, RedeemKeyModal
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
 from bot import UtilityBot
@@ -61,8 +62,8 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_18_cogs_loaded(self):
-        """Verify all 18 Cogs are discovered and successfully loaded."""
+    def test_all_19_cogs_loaded(self):
+        """Verify all 19 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
@@ -73,6 +74,7 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
             "Logging",
             "Moderation",
             "Polls",
+            "Premium",
             "Reminders",
             "Roles",
             "ServerStats",
@@ -90,8 +92,8 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_37_slash_commands_registered(self):
-        """Verify all 37 application commands are present in the command tree."""
+    def test_all_39_slash_commands_registered(self):
+        """Verify all 39 application commands are present in the command tree."""
         expected_commands = {
             "afk",
             "automod",
@@ -106,10 +108,12 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
             "hello",
             "kick",
             "leaderboard",
+            "license",
             "pay",
             "poll",
             "premium",
             "rank",
+            "redeem",
             "remindme",
             "role",
             "rolepanel",
@@ -438,6 +442,71 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
         await database.remove_server_stat_channels(guild_id)
         self.assertEqual(len(await database.get_server_stat_channels(guild_id)), 0)
 
+    async def test_premium_key_generation_and_redemption(self):
+        """Verify generating a license key and redeeming it for a guild."""
+        guild_id = 991199
+        user_id = 772277
+
+        # Key generation
+        key = await database.create_premium_key(duration_days=30, note="Stripe sub_123")
+        self.assertTrue(key.startswith("PREM-"))
+
+        # Initially guild is not premium
+        self.assertFalse(await database.is_guild_premium(guild_id))
+
+        # Redeem key
+        success, msg, new_exp = await database.redeem_premium_key(key, guild_id, user_id)
+        self.assertTrue(success)
+        self.assertIsNotNone(new_exp)
+
+        # Guild is now premium
+        self.assertTrue(await database.is_guild_premium(guild_id))
+        details = await database.get_guild_premium_details(guild_id)
+        self.assertTrue(details["is_premium"])
+        self.assertFalse(details["is_lifetime"])
+        self.assertGreaterEqual(details["days_remaining"], 29)
+
+        # Attempting to redeem the same key again fails
+        success2, msg2, _ = await database.redeem_premium_key(key, guild_id, user_id)
+        self.assertFalse(success2)
+        self.assertIn("already been redeemed", msg2)
+
+    async def test_premium_expiration_auto_downgrade(self):
+        """Verify expired subscriptions are automatically downgraded."""
+        guild_id = 882288
+        past_timestamp = datetime.datetime.now().timestamp() - 3600  # 1 hour in the past
+
+        await database.update_guild_setting(guild_id, "is_premium", 1)
+        await database.update_guild_setting(guild_id, "premium_expires_at", str(past_timestamp))
+
+        # is_guild_premium should detect expiration, reset to 0, and return False
+        self.assertFalse(await database.is_guild_premium(guild_id))
+
+        details = await database.get_guild_premium_details(guild_id)
+        self.assertFalse(details["is_premium"])
+
+    async def test_license_revocation(self):
+        """Verify manual revocation of premium tier."""
+        guild_id = 556677
+        key = await database.create_premium_key(duration_days=-1, note="Lifetime client")
+        await database.redeem_premium_key(key, guild_id, 12345)
+        self.assertTrue(await database.is_guild_premium(guild_id))
+
+        await database.revoke_guild_premium(guild_id)
+        self.assertFalse(await database.is_guild_premium(guild_id))
+
+    async def test_tier_limits_for_tags_and_sticky(self):
+        """Verify tag count and sticky count helper queries."""
+        guild_id = 445566
+        # Add 3 tags
+        for i in range(3):
+            await database.create_tag(guild_id, f"tag_{i}", f"content_{i}", 123)
+        self.assertEqual(await database.get_guild_tag_count(guild_id), 3)
+
+        # Add 1 sticky message
+        await database.set_sticky_message(channel_id=98765, content="Pinned", guild_id=guild_id)
+        self.assertEqual(await database.get_guild_sticky_count(guild_id), 1)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -503,6 +572,9 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
         sug_view = SuggestionVoteView()
         self.assertEqual(sug_view.children[0].custom_id, "suggestion_btn_upvote")
         self.assertEqual(sug_view.children[1].custom_id, "suggestion_btn_downvote")
+
+        prem_view = PremiumUpgradeView()
+        self.assertEqual(prem_view.children[0].custom_id, "premium_btn_redeem")
 
     def test_reminder_time_parser(self):
         """Verify time string parsing into seconds."""
@@ -627,7 +699,16 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
         await util.serverinfo.callback(util, interaction)
         await util.userinfo.callback(util, interaction, member=None)
         await util.avatar.callback(util, interaction, user=None)
-        await util.premium.callback(util, interaction)
+
+        # -------------------------------------------------------------
+        # Premium Cog Commands
+        # -------------------------------------------------------------
+        prem_cog = self.bot.get_cog("Premium")
+        await prem_cog.premium.callback(prem_cog, interaction)
+        await prem_cog.redeem_command.callback(prem_cog, interaction, key="PREM-ABCD-1234-5678")
+        await prem_cog.license_generate.callback(prem_cog, interaction, duration_days=30, note="Customer A")
+        await prem_cog.license_list.callback(prem_cog, interaction)
+        await prem_cog.license_revoke.callback(prem_cog, interaction, guild_id=str(guild.id))
 
         # -------------------------------------------------------------
         # Leveling Cog Commands

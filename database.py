@@ -2,6 +2,7 @@ import os
 import time
 import sqlite3
 import asyncio
+import secrets
 from typing import Dict, Any, Optional, Tuple, List
 
 DB_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -10,7 +11,7 @@ DB_PATH = os.path.join(DB_DIR, "bot.db")
 
 def _get_connection() -> sqlite3.Connection:
     os.makedirs(DB_DIR, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=20.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -192,6 +193,26 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS premium_keys (
+                key_code TEXT PRIMARY KEY,
+                duration_days INTEGER,
+                created_at REAL,
+                is_redeemed INTEGER DEFAULT 0,
+                redeemed_by_guild_id INTEGER DEFAULT NULL,
+                redeemed_by_user_id INTEGER DEFAULT NULL,
+                redeemed_at REAL DEFAULT NULL,
+                note TEXT DEFAULT NULL
+            )
+            """
+        )
+
+        try:
+            conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
+        except sqlite3.OperationalError:
+            pass
+
         conn.commit()
 
 
@@ -254,10 +275,30 @@ async def update_guild_setting(guild_id: int, key: str, value: Any):
     await asyncio.to_thread(_update_guild_setting_sync, guild_id, key, value)
 
 
+def _is_guild_premium_sync(guild_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_premium, premium_expires_at FROM guild_settings WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        if not row or not row["is_premium"]:
+            return False
+
+        expires_at = row["premium_expires_at"]
+        if expires_at is not None:
+            try:
+                exp_ts = float(expires_at)
+                if time.time() > exp_ts:
+                    conn.execute("UPDATE guild_settings SET is_premium = 0 WHERE guild_id = ?", (guild_id,))
+                    conn.commit()
+                    return False
+            except ValueError:
+                pass
+        return True
+
+
 async def is_guild_premium(guild_id: int) -> bool:
     """Check if a guild currently has active premium tier."""
-    settings = await get_guild_settings(guild_id)
-    return bool(settings.get("is_premium", 0))
+    return await asyncio.to_thread(_is_guild_premium_sync, guild_id)
 
 
 # ---------------------------------------------------------------------------
@@ -566,21 +607,23 @@ async def claim_daily(
 # Sticky Messages Database Operations
 # ---------------------------------------------------------------------------
 
-def _set_sticky_message_sync(channel_id: int, content: str):
+def _set_sticky_message_sync(channel_id: int, content: str, guild_id: Optional[int] = None):
     with _get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO sticky_messages (channel_id, message_content, last_message_id)
-            VALUES (?, ?, NULL)
-            ON CONFLICT(channel_id) DO UPDATE SET message_content = excluded.message_content
+            INSERT INTO sticky_messages (channel_id, guild_id, message_content, last_message_id)
+            VALUES (?, ?, ?, NULL)
+            ON CONFLICT(channel_id) DO UPDATE SET
+                message_content = excluded.message_content,
+                guild_id = COALESCE(excluded.guild_id, sticky_messages.guild_id)
             """,
-            (channel_id, content),
+            (channel_id, guild_id, content),
         )
         conn.commit()
 
 
-async def set_sticky_message(channel_id: int, content: str):
-    await asyncio.to_thread(_set_sticky_message_sync, channel_id, content)
+async def set_sticky_message(channel_id: int, content: str, guild_id: Optional[int] = None):
+    await asyncio.to_thread(_set_sticky_message_sync, channel_id, content, guild_id)
 
 
 def _get_sticky_message_sync(channel_id: int) -> Optional[Dict[str, Any]]:
@@ -981,4 +1024,209 @@ def _remove_server_stat_channels_sync(guild_id: int):
 
 async def remove_server_stat_channels(guild_id: int):
     await asyncio.to_thread(_remove_server_stat_channels_sync, guild_id)
+
+
+# ---------------------------------------------------------------------------
+# Premium Licensing & Monetization Database Operations
+# ---------------------------------------------------------------------------
+
+def _generate_key_string() -> str:
+    parts = [secrets.token_hex(2).upper() for _ in range(3)]
+    return f"PREM-{parts[0]}-{parts[1]}-{parts[2]}"
+
+
+def _create_premium_key_sync(duration_days: int = 30, note: Optional[str] = None) -> str:
+    key_code = _generate_key_string()
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO premium_keys (key_code, duration_days, created_at, is_redeemed, note)
+            VALUES (?, ?, ?, 0, ?)
+            """,
+            (key_code, duration_days, time.time(), note),
+        )
+        conn.commit()
+    return key_code
+
+
+async def create_premium_key(duration_days: int = 30, note: Optional[str] = None) -> str:
+    return await asyncio.to_thread(_create_premium_key_sync, duration_days, note)
+
+
+def _redeem_premium_key_sync(key_code: str, guild_id: int, user_id: int) -> Tuple[bool, str, Optional[float]]:
+    key_code = key_code.strip().upper()
+    now = time.time()
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM premium_keys WHERE key_code = ?", (key_code,))
+        row = cursor.fetchone()
+        if not row:
+            return False, "❌ Invalid license key. Please check the key and try again.", None
+        if row["is_redeemed"]:
+            return False, "❌ This license key has already been redeemed.", None
+
+        duration_days = row["duration_days"]
+
+        # Check existing guild subscription
+        cursor.execute("SELECT is_premium, premium_expires_at FROM guild_settings WHERE guild_id = ?", (guild_id,))
+        guild_row = cursor.fetchone()
+
+        base_time = now
+        if guild_row and guild_row["is_premium"] and guild_row["premium_expires_at"]:
+            try:
+                current_exp = float(guild_row["premium_expires_at"])
+                if current_exp > now:
+                    base_time = current_exp  # Extend existing active subscription
+            except ValueError:
+                pass
+
+        if duration_days == -1:
+            new_expiry = None
+            expiry_str = None
+        else:
+            new_expiry = base_time + (duration_days * 86400)
+            expiry_str = str(new_expiry)
+
+        # Mark key redeemed
+        conn.execute(
+            """
+            UPDATE premium_keys
+            SET is_redeemed = 1, redeemed_by_guild_id = ?, redeemed_by_user_id = ?, redeemed_at = ?
+            WHERE key_code = ?
+            """,
+            (guild_id, user_id, now, key_code),
+        )
+
+        # Ensure guild settings exist and update
+        cursor.execute("SELECT guild_id FROM guild_settings WHERE guild_id = ?", (guild_id,))
+        if not cursor.fetchone():
+            conn.execute(
+                """
+                INSERT INTO guild_settings (guild_id, is_premium, premium_expires_at, anti_invite, anti_spam, anti_mass_mention)
+                VALUES (?, 1, ?, 1, 1, 1)
+                """,
+                (guild_id, expiry_str),
+            )
+        else:
+            conn.execute(
+                "UPDATE guild_settings SET is_premium = 1, premium_expires_at = ? WHERE guild_id = ?",
+                (expiry_str, guild_id),
+            )
+        conn.commit()
+        return True, "✅ License redeemed successfully! Premium perks unlocked.", new_expiry
+
+
+async def redeem_premium_key(key_code: str, guild_id: int, user_id: int) -> Tuple[bool, str, Optional[float]]:
+    return await asyncio.to_thread(_redeem_premium_key_sync, key_code, guild_id, user_id)
+
+
+def _revoke_guild_premium_sync(guild_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE guild_settings SET is_premium = 0, premium_expires_at = NULL WHERE guild_id = ?",
+            (guild_id,),
+        )
+        conn.commit()
+
+
+async def revoke_guild_premium(guild_id: int):
+    await asyncio.to_thread(_revoke_guild_premium_sync, guild_id)
+
+
+def _get_guild_premium_details_sync(guild_id: int) -> Dict[str, Any]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_premium, premium_expires_at FROM guild_settings WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        if not row or not row["is_premium"]:
+            return {"is_premium": False, "expires_at": None, "days_remaining": 0, "is_lifetime": False}
+
+        expires_at = row["premium_expires_at"]
+        if expires_at is None:
+            return {"is_premium": True, "expires_at": None, "days_remaining": None, "is_lifetime": True}
+
+        try:
+            exp_ts = float(expires_at)
+            now = time.time()
+            if now > exp_ts:
+                conn.execute("UPDATE guild_settings SET is_premium = 0 WHERE guild_id = ?", (guild_id,))
+                conn.commit()
+                return {"is_premium": False, "expires_at": None, "days_remaining": 0, "is_lifetime": False}
+            days_left = max(0, int((exp_ts - now) // 86400))
+            return {"is_premium": True, "expires_at": exp_ts, "days_remaining": days_left, "is_lifetime": False}
+        except ValueError:
+            return {"is_premium": True, "expires_at": None, "days_remaining": None, "is_lifetime": True}
+
+
+async def get_guild_premium_details(guild_id: int) -> Dict[str, Any]:
+    return await asyncio.to_thread(_get_guild_premium_details_sync, guild_id)
+
+
+def _list_premium_keys_sync(limit: int = 50) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT key_code, duration_days, created_at, is_redeemed, redeemed_by_guild_id, note
+            FROM premium_keys
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def list_premium_keys(limit: int = 50) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_list_premium_keys_sync, limit)
+
+
+def _check_and_expire_premium_guilds_sync() -> List[int]:
+    now = time.time()
+    expired_guild_ids = []
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT guild_id, premium_expires_at FROM guild_settings WHERE is_premium = 1 AND premium_expires_at IS NOT NULL")
+        for row in cursor.fetchall():
+            try:
+                exp_ts = float(row["premium_expires_at"])
+                if now > exp_ts:
+                    expired_guild_ids.append(row["guild_id"])
+            except ValueError:
+                pass
+
+        if expired_guild_ids:
+            placeholders = ",".join("?" for _ in expired_guild_ids)
+            conn.execute(
+                f"UPDATE guild_settings SET is_premium = 0 WHERE guild_id IN ({placeholders})",
+                expired_guild_ids,
+            )
+            conn.commit()
+    return expired_guild_ids
+
+
+async def check_and_expire_premium_guilds() -> List[int]:
+    return await asyncio.to_thread(_check_and_expire_premium_guilds_sync)
+
+
+def _get_guild_tag_count_sync(guild_id: int) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM guild_tags WHERE guild_id = ?", (guild_id,))
+        return cursor.fetchone()[0]
+
+
+async def get_guild_tag_count(guild_id: int) -> int:
+    return await asyncio.to_thread(_get_guild_tag_count_sync, guild_id)
+
+
+def _get_guild_sticky_count_sync(guild_id: int) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM sticky_messages WHERE guild_id = ?", (guild_id,))
+        return cursor.fetchone()[0]
+
+
+async def get_guild_sticky_count(guild_id: int) -> int:
+    return await asyncio.to_thread(_get_guild_sticky_count_sync, guild_id)
 
