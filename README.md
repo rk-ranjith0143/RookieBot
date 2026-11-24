@@ -209,3 +209,11 @@ docker compose up -d --build
 # View real-time logs
 docker compose logs -f
 ```
+
+---
+
+## ⚖️ Legal & Compliance
+
+- [Terms of Service](TERMS.md)
+- [Privacy Policy](PRIVACY.md)
+
