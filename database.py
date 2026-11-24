@@ -208,6 +208,39 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS autoroles (
+                guild_id INTEGER PRIMARY KEY,
+                member_role_id INTEGER DEFAULT NULL,
+                bot_role_id INTEGER DEFAULT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS autoresponders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                trigger_phrase TEXT,
+                response_text TEXT,
+                is_exact INTEGER DEFAULT 0
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS level_roles (
+                guild_id INTEGER,
+                level INTEGER,
+                role_id INTEGER,
+                PRIMARY KEY (guild_id, level)
+            )
+            """
+        )
+
         try:
             conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
         except sqlite3.OperationalError:
@@ -1229,4 +1262,151 @@ def _get_guild_sticky_count_sync(guild_id: int) -> int:
 
 async def get_guild_sticky_count(guild_id: int) -> int:
     return await asyncio.to_thread(_get_guild_sticky_count_sync, guild_id)
+
+
+# ---------------------------------------------------------------------------
+# Auto-Role Database Operations
+# ---------------------------------------------------------------------------
+
+def _set_autoroles_sync(guild_id: int, member_role_id: Optional[int], bot_role_id: Optional[int]):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO autoroles (guild_id, member_role_id, bot_role_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                member_role_id = COALESCE(excluded.member_role_id, autoroles.member_role_id),
+                bot_role_id = COALESCE(excluded.bot_role_id, autoroles.bot_role_id)
+            """,
+            (guild_id, member_role_id, bot_role_id),
+        )
+        conn.commit()
+
+
+async def set_autoroles(guild_id: int, member_role_id: Optional[int] = None, bot_role_id: Optional[int] = None):
+    await asyncio.to_thread(_set_autoroles_sync, guild_id, member_role_id, bot_role_id)
+
+
+def _get_autoroles_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM autoroles WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_autoroles(guild_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_autoroles_sync, guild_id)
+
+
+def _remove_autoroles_sync(guild_id: int):
+    with _get_connection() as conn:
+        conn.execute("DELETE FROM autoroles WHERE guild_id = ?", (guild_id,))
+        conn.commit()
+
+
+async def remove_autoroles(guild_id: int):
+    await asyncio.to_thread(_remove_autoroles_sync, guild_id)
+
+
+# ---------------------------------------------------------------------------
+# Auto-Responder Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_autoresponder_sync(guild_id: int, trigger: str, response: str, is_exact: int = 0) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO autoresponders (guild_id, trigger_phrase, response_text, is_exact)
+            VALUES (?, ?, ?, ?)
+            """,
+            (guild_id, trigger.strip().lower(), response.strip(), is_exact),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+async def add_autoresponder(guild_id: int, trigger: str, response: str, is_exact: int = 0) -> int:
+    return await asyncio.to_thread(_add_autoresponder_sync, guild_id, trigger, response, is_exact)
+
+
+def _get_autoresponders_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM autoresponders WHERE guild_id = ? ORDER BY id ASC",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_autoresponders(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_autoresponders_sync, guild_id)
+
+
+def _delete_autoresponder_sync(guild_id: int, responder_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM autoresponders WHERE guild_id = ? AND id = ?",
+            (guild_id, responder_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def delete_autoresponder(guild_id: int, responder_id: int) -> bool:
+    return await asyncio.to_thread(_delete_autoresponder_sync, guild_id, responder_id)
+
+
+# ---------------------------------------------------------------------------
+# Level-Up Role Rewards Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_level_role_sync(guild_id: int, level: int, role_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO level_roles (guild_id, level, role_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(guild_id, level) DO UPDATE SET role_id = excluded.role_id
+            """,
+            (guild_id, level, role_id),
+        )
+        conn.commit()
+
+
+async def add_level_role(guild_id: int, level: int, role_id: int):
+    await asyncio.to_thread(_add_level_role_sync, guild_id, level, role_id)
+
+
+def _get_level_roles_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT level, role_id FROM level_roles WHERE guild_id = ? ORDER BY level ASC",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_level_roles(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_level_roles_sync, guild_id)
+
+
+def _remove_level_role_sync(guild_id: int, level: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM level_roles WHERE guild_id = ? AND level = ?",
+            (guild_id, level),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def remove_level_role(guild_id: int, level: int) -> bool:
+    return await asyncio.to_thread(_remove_level_role_sync, guild_id, level)
+
 

@@ -62,14 +62,17 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_19_cogs_loaded(self):
-        """Verify all 19 Cogs are discovered and successfully loaded."""
+    def test_all_22_cogs_loaded(self):
+        """Verify all 22 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
+            "AutoResponder",
+            "AutoRole",
             "Economy",
             "Embeds",
             "Events",
+            "Help",
             "Leveling",
             "Logging",
             "Moderation",
@@ -92,11 +95,13 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_39_slash_commands_registered(self):
-        """Verify all 39 application commands are present in the command tree."""
+    def test_all_46_slash_commands_registered(self):
+        """Verify all 46 application commands are present in the command tree."""
         expected_commands = {
             "afk",
             "automod",
+            "autoresponder",
+            "autorole",
             "avatar",
             "balance",
             "ban",
@@ -106,9 +111,12 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "embed",
             "giveaway",
             "hello",
+            "help",
             "kick",
             "leaderboard",
+            "levelrole",
             "license",
+            "lock",
             "pay",
             "poll",
             "premium",
@@ -124,6 +132,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "setlogs",
             "setsuggestchannel",
             "setwelcome",
+            "slowmode",
             "starboard",
             "sticky",
             "suggest",
@@ -132,6 +141,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "ticketsetup",
             "timeout",
             "unban",
+            "unlock",
             "untimeout",
             "userinfo",
         }
@@ -507,6 +517,61 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await database.set_sticky_message(channel_id=98765, content="Pinned", guild_id=guild_id)
         self.assertEqual(await database.get_guild_sticky_count(guild_id), 1)
 
+    async def test_autoroles_database_operations(self):
+        """Verify setting, fetching, and removing auto-roles."""
+        guild_id = 998811
+        # Initially empty
+        self.assertIsNone(await database.get_autoroles(guild_id))
+
+        # Set autoroles
+        await database.set_autoroles(guild_id, member_role_id=111, bot_role_id=222)
+        cfg = await database.get_autoroles(guild_id)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["member_role_id"], 111)
+        self.assertEqual(cfg["bot_role_id"], 222)
+
+        # Remove autoroles
+        await database.remove_autoroles(guild_id)
+        self.assertIsNone(await database.get_autoroles(guild_id))
+
+    async def test_autoresponder_database_operations(self):
+        """Verify adding, querying, and deleting keyword auto-responders."""
+        guild_id = 887722
+        # Initially empty
+        self.assertEqual(len(await database.get_autoresponders(guild_id)), 0)
+
+        # Add auto-responder
+        r_id = await database.add_autoresponder(guild_id, trigger="!ip", response="play.server.com", is_exact=1)
+        self.assertIsInstance(r_id, int)
+
+        responders = await database.get_autoresponders(guild_id)
+        self.assertEqual(len(responders), 1)
+        self.assertEqual(responders[0]["trigger_phrase"], "!ip")
+        self.assertEqual(responders[0]["response_text"], "play.server.com")
+
+        # Delete auto-responder
+        self.assertTrue(await database.delete_autoresponder(guild_id, r_id))
+        self.assertEqual(len(await database.get_autoresponders(guild_id)), 0)
+
+    async def test_level_roles_database_operations(self):
+        """Verify adding, listing, and removing milestone role rewards."""
+        guild_id = 776633
+        # Initially empty
+        self.assertEqual(len(await database.get_level_roles(guild_id)), 0)
+
+        # Add milestone roles
+        await database.add_level_role(guild_id, level=5, role_id=555)
+        await database.add_level_role(guild_id, level=10, role_id=1010)
+
+        roles = await database.get_level_roles(guild_id)
+        self.assertEqual(len(roles), 2)
+        self.assertEqual(roles[0]["level"], 5)
+        self.assertEqual(roles[0]["role_id"], 555)
+
+        # Remove level role
+        self.assertTrue(await database.remove_level_role(guild_id, level=5))
+        self.assertEqual(len(await database.get_level_roles(guild_id)), 1)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -669,6 +734,16 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         guild.create_voice_channel = AsyncMock(return_value=mock_voice)
         guild.create_category = AsyncMock(return_value=mock_category)
 
+        mock_role = MagicMock(spec=discord.Role)
+        mock_role.id = 555444
+        mock_role.name = "Member"
+        mock_role.mention = "@Member"
+        mock_role.__ge__ = MagicMock(return_value=False)
+        guild.roles = [mock_role]
+        guild.get_role = MagicMock(return_value=mock_role)
+        guild.default_role = MagicMock(spec=discord.Role)
+        guild.get_member = MagicMock(return_value=guild.me)
+
         channel = MagicMock(spec=discord.TextChannel)
         channel.id = 222222
         channel.name = "general"
@@ -676,6 +751,9 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         channel.send = AsyncMock(return_value=mock_msg)
         channel.fetch_message = AsyncMock(return_value=mock_msg)
         channel.purge = AsyncMock(return_value=[mock_msg, mock_msg])
+        channel.edit = AsyncMock()
+        channel.overwrites_for = MagicMock(return_value=discord.PermissionOverwrite())
+        channel.set_permissions = AsyncMock()
         channel.permissions_for = MagicMock(return_value=MagicMock(send_messages=True, embed_links=True))
         guild.get_channel = MagicMock(return_value=channel)
 
@@ -716,6 +794,9 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         lvl = self.bot.get_cog("Leveling")
         await lvl.leaderboard.callback(lvl, interaction)
         await lvl.rank.callback(lvl, interaction, member=None)
+        await lvl.levelrole_add.callback(lvl, interaction, level=5, role=mock_role)
+        await lvl.levelrole_list.callback(lvl, interaction)
+        await lvl.levelrole_remove.callback(lvl, interaction, level=5)
 
         # -------------------------------------------------------------
         # Embeds Cog Commands
@@ -730,6 +811,9 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await mod.clear.callback(mod, interaction, amount=2)
         await mod.timeout.callback(mod, interaction, member=user, duration=5)
         await mod.kick.callback(mod, interaction, member=user)
+        await mod.slowmode.callback(mod, interaction, seconds=10, channel=channel)
+        await mod.lock.callback(mod, interaction, channel=channel, reason="Testing lock")
+        await mod.unlock.callback(mod, interaction, channel=channel)
 
         # -------------------------------------------------------------
         # Polls Cog Commands
@@ -825,6 +909,29 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await stats_cog.setup_stats.callback(stats_cog, interaction)
         await stats_cog.refresh_stats.callback(stats_cog, interaction)
         await stats_cog.remove_stats.callback(stats_cog, interaction)
+
+        # -------------------------------------------------------------
+        # Help Cog Commands
+        # -------------------------------------------------------------
+        help_cog = self.bot.get_cog("Help")
+        await help_cog.help_command.callback(help_cog, interaction)
+
+        # -------------------------------------------------------------
+        # AutoRole Cog Commands
+        # -------------------------------------------------------------
+        ar_cog = self.bot.get_cog("AutoRole")
+        await ar_cog.autorole_set.callback(ar_cog, interaction, member_role=mock_role, bot_role=None)
+        await ar_cog.autorole_status.callback(ar_cog, interaction)
+        await ar_cog.autorole_remove.callback(ar_cog, interaction)
+
+        # -------------------------------------------------------------
+        # AutoResponder Cog Commands
+        # -------------------------------------------------------------
+        responder_cog = self.bot.get_cog("AutoResponder")
+        match_choice = app_commands.Choice(name="Contains", value="contains")
+        await responder_cog.ar_add.callback(responder_cog, interaction, trigger="faq", response="Check info", match_type=match_choice)
+        await responder_cog.ar_list.callback(responder_cog, interaction)
+        await responder_cog.ar_delete.callback(responder_cog, interaction, responder_id=1)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

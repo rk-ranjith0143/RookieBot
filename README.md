@@ -20,10 +20,13 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
   - Edited messages with side-by-side before/after diffs.
   - Member bans, unbans, and server departures.
 
-### 3. 📈 Leveling & Gamification (`cogs/leveling.py`)
+### 3. 📈 Leveling & Milestone Roles (`cogs/leveling.py`)
 - Automated chat activity XP system with 60s cooldowns to prevent spam abuse.
 - `/rank [member]`: View dynamic rank cards with ASCII progress bars, level, current XP, and XP required for next level.
 - `/leaderboard`: Display the top 10 most active community members.
+- `/levelrole add [level] [role]`: Automatically reward members with custom vanity or perks roles upon hitting level milestones (e.g. Level 5, 10, 20).
+- `/levelrole list`: View all configured level rewards in the server.
+- `/levelrole remove [level]`: Unbind a level reward.
 
 ### 4. 🎨 Custom Embed Builder (`cogs/embeds.py`)
 - `/embed`: Opens an interactive Discord modal to build and publish rich announcement embeds with custom hex colors, titles, descriptions, and footers.
@@ -55,6 +58,9 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/timeout [member] [duration] [reason]`: Timeout disruptive members for up to 28 days.
 - `/untimeout [member]`: Remove an active timeout.
 - `/clear [amount] [member]`: Purge up to 100 messages from the channel, with optional user filtering.
+- `/slowmode [seconds] [channel]`: Adjust channel rate limits from 0s up to 6 hours to calm fast-moving chats.
+- `/lock [channel] [reason]`: Instantly lock channel sending permissions for `@everyone` during raids.
+- `/unlock [channel]`: Restore normal channel permissions with confirmation embeds.
 
 ### 10. 💤 AFK Status System (`cogs/afk.py`)
 - `/afk [reason]`: Set an AFK status.
@@ -120,6 +126,27 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - Automated background task (`check_expirations_loop`) monitors subscription lifecycle and auto-expires overdue servers.
 - *For complete strategy and Stripe/Retainer setup, read [MONETIZATION.md](file:///d:/Discord_Projects/discord-utility-bot/MONETIZATION.md).*
 
+### 20. 📖 Interactive Help Directory (`cogs/help.py`)
+- `/help`: Rich interactive command manual with category dropdown navigation.
+- Allows server members and administrators to explore all bot systems by category:
+  - 🏠 Overview & Quick Start
+  - 🛡️ Moderation & Security
+  - 📈 Leveling & Economy
+  - 📩 Tickets & Roles
+  - 💬 Community & Utility
+  - 💎 Premium & Monetization
+
+### 21. 🎭 Auto-Role on Join (`cogs/autorole.py`)
+- `/autorole set [member_role] [bot_role]`: Automatically assign configured roles to incoming members and bots as soon as they join.
+- `/autorole status`: Inspect current auto-role assignments.
+- `/autorole remove`: Disable auto-roles for the server.
+- Features hierarchy safety guards to prevent privilege escalation.
+
+### 22. ⚡ Keyword Auto-Responder (`cogs/autoresponder.py`)
+- `/autoresponder add [trigger] [response] [match_type]`: Create automated keyword responses with choice of **Exact Match** or **Contains Substring**.
+- `/autoresponder list`: View all active automated responses with numeric IDs.
+- `/autoresponder delete [id]`: Delete an automated response trigger.
+
 ---
 
 ## 🗂️ Project Structure
@@ -129,12 +156,15 @@ RookieBot/
 ├── cogs/
 │   ├── afk.py           # /afk status and auto-response mention alerts
 │   ├── automod.py       # Anti-invite links, mass-mentions, and anti-spam
+│   ├── autoresponder.py # Keyword trigger auto-replies (/autoresponder)
+│   ├── autorole.py      # Automated role assignment on join (/autorole)
 │   ├── economy.py       # /balance, /daily, /pay, and /coinflip mini-games
 │   ├── embeds.py        # Interactive announcement modal (/embed)
 │   ├── events.py        # Welcome & leave greetings (/setwelcome, /setleave)
-│   ├── leveling.py      # XP tracking, /rank cards, and /leaderboard
+│   ├── help.py          # Interactive category dropdown help menu (/help)
+│   ├── leveling.py      # XP tracking, /rank cards, /leaderboard, and /levelrole
 │   ├── logging.py       # Audit logging for edits, deletes, and bans (/setlogs)
-│   ├── moderation.py    # /kick, /ban, /unban, /timeout, /untimeout, /clear
+│   ├── moderation.py    # /kick, /ban, /unban, /timeout, /clear, /lock, /slowmode
 │   ├── polls.py         # /poll and timed /giveaway
 │   ├── premium.py       # Monetization engine, /premium, /redeem, and /license
 │   ├── reminders.py     # /remindme with background loop and SQLite queue
@@ -148,7 +178,7 @@ RookieBot/
 │   └── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 24-test automated test suite
+├── test_bot.py          # Comprehensive 54-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -161,19 +191,19 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 19 Cogs, 39 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 22 Cogs, 46 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 24 test cases pass with a 100% success rate:
-- ✅ 19 Cogs discovery & extension loading
-- ✅ 39 Slash commands registered in command tree
-- ✅ Multi-tenant database operations (Leveling, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
+All 54 test cases pass with a 100% success rate:
+- ✅ 22 Cogs discovery & extension loading
+- ✅ 46 Slash commands registered in command tree
+- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
-- ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium)
+- ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help)
 - ✅ End-to-end slash command callback runtime execution
 
 ---

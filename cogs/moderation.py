@@ -359,6 +359,90 @@ class Moderation(commands.Cog):
                 ephemeral=True,
             )
 
+    @app_commands.command(name="slowmode", description="Set the slowmode rate limit for a text channel")
+    @app_commands.describe(
+        seconds="Slowmode delay in seconds (0 to disable, up to 21600 / 6 hours)",
+        channel="Channel to modify (defaults to current channel)",
+    )
+    @app_commands.checks.has_permissions(manage_channels=True)
+    @app_commands.checks.bot_has_permissions(manage_channels=True)
+    async def slowmode(
+        self,
+        interaction: discord.Interaction,
+        seconds: app_commands.Range[int, 0, 21600],
+        channel: Optional[discord.TextChannel] = None,
+    ):
+        target_channel = channel or interaction.channel
+        if not isinstance(target_channel, discord.TextChannel):
+            await interaction.response.send_message("❌ Slowmode can only be applied to text channels.", ephemeral=True)
+            return
+
+        await target_channel.edit(slowmode_delay=seconds)
+        if seconds == 0:
+            await interaction.response.send_message(f"✅ Slowmode disabled for {target_channel.mention}.")
+        else:
+            await interaction.response.send_message(f"⏱️ Slowmode set to **{seconds}s** for {target_channel.mention}.")
+
+    @app_commands.command(name="lock", description="Lock a channel to prevent regular members from sending messages")
+    @app_commands.describe(
+        channel="Channel to lock (defaults to current channel)",
+        reason="Reason for locking the channel",
+    )
+    @app_commands.checks.has_permissions(manage_channels=True)
+    @app_commands.checks.bot_has_permissions(manage_channels=True)
+    async def lock(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[discord.TextChannel] = None,
+        reason: Optional[str] = "No reason provided",
+    ):
+        target_channel = channel or interaction.channel
+        if not isinstance(target_channel, discord.TextChannel):
+            await interaction.response.send_message("❌ This command must be used in a text channel.", ephemeral=True)
+            return
+
+        guild = interaction.guild
+        overwrites = target_channel.overwrites_for(guild.default_role)
+        overwrites.send_messages = False
+        await target_channel.set_permissions(guild.default_role, overwrite=overwrites, reason=f"Channel locked by {interaction.user}: {reason}")
+
+        embed = discord.Embed(
+            title="🔒 Channel Locked",
+            description=f"This channel has been locked by staff.\n**Reason:** {reason}",
+            color=discord.Color.red(),
+            timestamp=discord.utils.utcnow(),
+        )
+        await target_channel.send(embed=embed)
+        await interaction.response.send_message(f"🔒 {target_channel.mention} has been locked.", ephemeral=True)
+
+    @app_commands.command(name="unlock", description="Unlock a previously locked channel")
+    @app_commands.describe(channel="Channel to unlock (defaults to current channel)")
+    @app_commands.checks.has_permissions(manage_channels=True)
+    @app_commands.checks.bot_has_permissions(manage_channels=True)
+    async def unlock(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[discord.TextChannel] = None,
+    ):
+        target_channel = channel or interaction.channel
+        if not isinstance(target_channel, discord.TextChannel):
+            await interaction.response.send_message("❌ This command must be used in a text channel.", ephemeral=True)
+            return
+
+        guild = interaction.guild
+        overwrites = target_channel.overwrites_for(guild.default_role)
+        overwrites.send_messages = None
+        await target_channel.set_permissions(guild.default_role, overwrite=overwrites, reason=f"Channel unlocked by {interaction.user}")
+
+        embed = discord.Embed(
+            title="🔓 Channel Unlocked",
+            description="This channel has been unlocked. Members can now send messages.",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow(),
+        )
+        await target_channel.send(embed=embed)
+        await interaction.response.send_message(f"🔓 {target_channel.mention} has been unlocked.", ephemeral=True)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Moderation(bot))

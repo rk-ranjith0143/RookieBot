@@ -5,7 +5,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from database import add_user_xp, get_user_level_data, get_top_leaderboard
+from database import (
+    add_user_xp,
+    get_user_level_data,
+    get_top_leaderboard,
+    add_level_role,
+    get_level_roles,
+    remove_level_role,
+)
 
 
 def render_progress_bar(current: int, total: int, length: int = 10) -> str:
@@ -40,9 +47,21 @@ class Leveling(commands.Cog):
         )
 
         if leveled_up:
+            unlocked_roles_text = ""
+            rewards = await get_level_roles(message.guild.id)
+            for r in rewards:
+                if r["level"] == new_level:
+                    role = message.guild.get_role(r["role_id"])
+                    if role and isinstance(message.author, discord.Member):
+                        try:
+                            await message.author.add_roles(role, reason=f"Level {new_level} milestone reached")
+                            unlocked_roles_text += f"\n🎁 **Role Reward Unlocked:** {role.mention}!"
+                        except discord.Forbidden:
+                            pass
+
             embed = discord.Embed(
                 title="🎉 Level Up!",
-                description=f"Congratulations {message.author.mention}! You advanced to **Level {new_level}**! 🚀",
+                description=f"Congratulations {message.author.mention}! You advanced to **Level {new_level}**! 🚀{unlocked_roles_text}",
                 color=discord.Color.gold(),
             )
             embed.set_thumbnail(url=message.author.display_avatar.url)
@@ -119,6 +138,84 @@ class Leveling(commands.Cog):
         embed.description = "\n\n".join(lines)
         embed.set_footer(text="Earn XP by chatting in the server!")
         await interaction.response.send_message(embed=embed)
+
+    # -----------------------------------------------------------------------
+    # Level Milestone Roles
+    # -----------------------------------------------------------------------
+
+    levelrole_group = app_commands.Group(
+        name="levelrole",
+        description="Configure automatic role rewards for reaching level milestones",
+        default_permissions=discord.Permissions(manage_roles=True),
+    )
+
+    @levelrole_group.command(name="add", description="Set a role reward for reaching a specific level")
+    @app_commands.describe(
+        level="The level required to unlock this role (e.g. 5, 10, 20)",
+        role="The role to grant to members who reach this level",
+    )
+    async def levelrole_add(
+        self,
+        interaction: discord.Interaction,
+        level: app_commands.Range[int, 1, 100],
+        role: discord.Role,
+    ):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        bot_member = interaction.guild.get_member(self.bot.user.id) if self.bot.user else None
+        if bot_member and role >= bot_member.top_role:
+            await interaction.response.send_message(
+                f"❌ I cannot assign {role.mention} because it is equal to or higher than my highest role.",
+                ephemeral=True,
+            )
+            return
+
+        await add_level_role(interaction.guild.id, level, role.id)
+        embed = discord.Embed(
+            title="🎁 Level Reward Configured",
+            description=f"Members will automatically receive {role.mention} when they reach **Level {level}**!",
+            color=discord.Color.green(),
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @levelrole_group.command(name="list", description="List all configured level role rewards")
+    async def levelrole_list(self, interaction: discord.Interaction):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        rewards = await get_level_roles(interaction.guild.id)
+        if not rewards:
+            await interaction.response.send_message("ℹ️ No level roles configured yet. Use `/levelrole add`.", ephemeral=True)
+            return
+
+        lines = []
+        for r in rewards:
+            role = interaction.guild.get_role(r["role_id"])
+            role_text = role.mention if role else f"Unknown Role (`{r['role_id']}`)"
+            lines.append(f"• **Level {r['level']}** ➔ {role_text}")
+
+        embed = discord.Embed(
+            title=f"🎁 Level Role Rewards ({len(rewards)})",
+            description="\n".join(lines),
+            color=0xFEE75C,
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @levelrole_group.command(name="remove", description="Remove a role reward for a level milestone")
+    @app_commands.describe(level="The level whose reward you want to remove")
+    async def levelrole_remove(self, interaction: discord.Interaction, level: int):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        removed = await remove_level_role(interaction.guild.id, level)
+        if removed:
+            await interaction.response.send_message(f"✅ Removed role reward for **Level {level}**.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"❌ No role reward was found for **Level {level}**.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
