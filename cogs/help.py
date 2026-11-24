@@ -107,12 +107,16 @@ class HelpCategorySelect(discord.ui.Select):
                 inline=False,
             )
             embed.add_field(
-                name="Server Economy",
+                name="Server Economy & Shop",
                 value=(
                     "• `/balance [member]` - Check your wallet or another user's balance.\n"
                     "• `/daily` - Claim 200 free coins every 24 hours.\n"
+                    "• `/work` - Work shifts to earn 50-150 coins.\n"
                     "• `/pay [member] [amount]` - Send coins to another server member.\n"
-                    "• `/coinflip [bet] [choice]` - Double-or-nothing coin toss game."
+                    "• `/coinflip [bet] [choice]` - Double-or-nothing coin toss game.\n"
+                    "• `/shop view` & `/shop add` - Browse or add items to the server shop.\n"
+                    "• `/buy [item_id]` - Purchase roles or items using coins.\n"
+                    "• `/inventory [member]` - View your purchased items and perks."
                 ),
                 inline=False,
             )

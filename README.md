@@ -71,11 +71,17 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/remindme [time] [message]`: Schedule timers and reminders (e.g. `30s`, `10m`, `2h`, `1d`).
 - High-efficiency background task polls SQLite and pings you when your reminder is due.
 
-### 12. 🪙 Virtual Server Economy & Mini-Games (`cogs/economy.py`)
+### 12. 🪙 Virtual Server Economy & Shop (`cogs/economy.py`)
 - `/balance [member]`: Inspect personal wallet or check another member's coin balance.
 - `/daily`: Claim 200 free coins every 24 hours with strict cooldown enforcement.
+- `/work`: Work randomized career shifts (barista, coder, streamer, chef) to earn 50–150 coins (1-hour cooldown).
 - `/pay [member] [amount]`: Transfer coins securely between server members.
 - `/coinflip [bet] [choice]`: Double-or-nothing coin toss mini-game against the house.
+- `/shop view`: Browse server shop items and role rewards with prices.
+- `/shop add [name] [price] [description] [role]`: Server administrators can list custom items or unlockable roles.
+- `/shop remove [item_id]`: Delete an item from the server shop.
+- `/buy [item_id]`: Purchase items using virtual coins — automatically assigns linked roles to your profile!
+- `/inventory [member]`: Inspect all purchased items, perks, and roles with purchase timestamps.
 
 ### 13. 📌 Sticky Messages (`cogs/sticky.py`)
 - `/sticky set [message]`: Pins an important announcement to the bottom of the chat.
@@ -210,7 +216,7 @@ RookieBot/
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 60-test automated test suite
+├── test_bot.py          # Comprehensive 62-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -223,17 +229,17 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 25 Cogs, 55 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 25 Cogs, 59 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 60 test cases pass with a 100% success rate:
+All 62 test cases pass with a 100% success rate:
 - ✅ 25 Cogs discovery & extension loading
-- ✅ 55 Slash commands registered in command tree
-- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
+- ✅ 59 Slash commands registered in command tree
+- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)
 - ✅ End-to-end slash command callback runtime execution

@@ -99,8 +99,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_55_slash_commands_registered(self):
-        """Verify all 55 application commands are present in the command tree."""
+    def test_all_59_slash_commands_registered(self):
+        """Verify all 59 application commands are present in the command tree."""
         expected_commands = {
             "afk",
             "automod",
@@ -109,6 +109,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "avatar",
             "balance",
             "ban",
+            "buy",
             "clear",
             "clearwarns",
             "coinflip",
@@ -118,6 +119,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "giveaway",
             "hello",
             "help",
+            "inventory",
             "kick",
             "leaderboard",
             "levelrole",
@@ -138,6 +140,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "setlogs",
             "setsuggestchannel",
             "setwelcome",
+            "shop",
             "slowmode",
             "starboard",
             "sticky",
@@ -157,6 +160,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "verifystatus",
             "warn",
             "warnings",
+            "work",
         }
         registered_commands = {cmd.name for cmd in self.bot.tree.get_commands()}
         self.assertEqual(
@@ -672,6 +676,65 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await database.disable_temp_vc(guild_id))
         self.assertEqual((await database.get_temp_vc_settings(guild_id))["is_enabled"], 0)
 
+    async def test_economy_shop_and_inventory_database_operations(self):
+        """Verify shop item creation, purchasing, inventory tracking, and work rewards."""
+        guild_id = 991122
+        user_id = 332211
+        role_id = 776655
+
+        # Initial shop is empty
+        self.assertEqual(len(await database.get_shop_items(guild_id)), 0)
+
+        # Add shop item
+        item_id = await database.add_shop_item(
+            guild_id=guild_id,
+            item_name="VIP Pass",
+            price=50,
+            description="Grants VIP role",
+            role_id=role_id,
+        )
+        self.assertIsInstance(item_id, int)
+
+        # Get shop items
+        items = await database.get_shop_items(guild_id)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["item_name"], "VIP Pass")
+        self.assertEqual(items[0]["price"], 50)
+
+        # Ensure user has balance
+        await database.update_user_balance(guild_id, user_id, 100)
+
+        # Buy item
+        success, msg, itm = await database.buy_shop_item(guild_id, user_id, item_id)
+        self.assertTrue(success)
+        self.assertEqual(itm["item_name"], "VIP Pass")
+
+        # Check inventory
+        inv = await database.get_user_inventory(guild_id, user_id)
+        self.assertEqual(len(inv), 1)
+        self.assertEqual(inv[0]["item_name"], "VIP Pass")
+
+        # Attempt to buy without sufficient balance
+        await database.update_user_balance(guild_id, user_id, -1000)  # zero/negative out
+        fail_success, fail_msg, _ = await database.buy_shop_item(guild_id, user_id, item_id)
+        self.assertFalse(fail_success)
+        self.assertIn("Insufficient funds", fail_msg)
+
+        # Delete shop item
+        self.assertTrue(await database.delete_shop_item(guild_id, item_id))
+        self.assertEqual(len(await database.get_shop_items(guild_id)), 0)
+
+        # Test claim_work
+        work_user = 443322
+        worked, earned, new_bal, rem = await database.claim_work(guild_id, work_user, min_reward=50, max_reward=50)
+        self.assertTrue(worked)
+        self.assertEqual(earned, 50)
+        self.assertEqual(new_bal, 150)  # default 100 + 50
+        # Second work within cooldown fails
+        worked2, _, _, rem2 = await database.claim_work(guild_id, work_user)
+        self.assertFalse(worked2)
+        self.assertGreater(rem2, 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -968,6 +1031,12 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         coin_choice = app_commands.Choice(name="Heads", value="heads")
         await eco_cog.coinflip.callback(eco_cog, interaction, bet=50, choice=coin_choice)
         await eco_cog.pay.callback(eco_cog, interaction, member=target_user, amount=50)
+        await eco_cog.work.callback(eco_cog, interaction)
+        await eco_cog.shop_add.callback(eco_cog, interaction, name="VIP Role", price=50, description="VIP perks", role=mock_role)
+        await eco_cog.shop_view.callback(eco_cog, interaction)
+        await eco_cog.buy.callback(eco_cog, interaction, item_id=1)
+        await eco_cog.inventory.callback(eco_cog, interaction, member=None)
+        await eco_cog.shop_remove.callback(eco_cog, interaction, item_id=1)
 
         # -------------------------------------------------------------
         # Events Cog Commands (Welcome & Leave configuration)

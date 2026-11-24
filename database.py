@@ -289,6 +289,39 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS economy_shop (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                item_name TEXT,
+                description TEXT,
+                price INTEGER,
+                role_id INTEGER DEFAULT NULL,
+                created_at REAL
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_inventory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                user_id INTEGER,
+                item_id INTEGER,
+                item_name TEXT,
+                role_id INTEGER DEFAULT NULL,
+                purchased_at REAL
+            )
+            """
+        )
+
+        try:
+            conn.execute("ALTER TABLE user_economy ADD COLUMN last_work REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+
         try:
             conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
         except sqlite3.OperationalError:
@@ -1720,6 +1753,209 @@ def _delete_temp_channel_sync(channel_id: int) -> bool:
 
 async def delete_temp_channel(channel_id: int) -> bool:
     return await asyncio.to_thread(_delete_temp_channel_sync, channel_id)
+
+
+# ---------------------------------------------------------------------------
+# Economy Shop, Inventory & Work Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_shop_item_sync(
+    guild_id: int, item_name: str, price: int, description: str = "", role_id: Optional[int] = None
+) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO economy_shop (guild_id, item_name, description, price, role_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (guild_id, item_name, description, price, role_id, time.time()),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+async def add_shop_item(
+    guild_id: int, item_name: str, price: int, description: str = "", role_id: Optional[int] = None
+) -> int:
+    return await asyncio.to_thread(
+        _add_shop_item_sync, guild_id, item_name, price, description, role_id
+    )
+
+
+def _get_shop_items_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, guild_id, item_name, description, price, role_id, created_at FROM economy_shop WHERE guild_id = ? ORDER BY price ASC",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_shop_items(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_shop_items_sync, guild_id)
+
+
+def _get_shop_item_sync(guild_id: int, item_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, guild_id, item_name, description, price, role_id, created_at FROM economy_shop WHERE guild_id = ? AND id = ?",
+            (guild_id, item_id),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_shop_item(guild_id: int, item_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_shop_item_sync, guild_id, item_id)
+
+
+def _delete_shop_item_sync(guild_id: int, item_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM economy_shop WHERE guild_id = ? AND id = ?",
+            (guild_id, item_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def delete_shop_item(guild_id: int, item_id: int) -> bool:
+    return await asyncio.to_thread(_delete_shop_item_sync, guild_id, item_id)
+
+
+def _buy_shop_item_sync(
+    guild_id: int, user_id: int, item_id: int
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, guild_id, item_name, description, price, role_id FROM economy_shop WHERE guild_id = ? AND id = ?",
+            (guild_id, item_id),
+        )
+        item_row = cursor.fetchone()
+        if not item_row:
+            return False, "❌ Item not found in this server's shop.", None
+
+        item = dict(item_row)
+        price = item["price"]
+
+        cursor.execute(
+            "SELECT balance FROM user_economy WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        bal_row = cursor.fetchone()
+        current_balance = bal_row[0] if bal_row else 100
+
+        if current_balance < price:
+            return (
+                False,
+                f"❌ Insufficient funds! You need **{price:,} Coins**, but only have **{current_balance:,} Coins**.",
+                None,
+            )
+
+        # Deduct balance
+        conn.execute(
+            """
+            INSERT INTO user_economy (guild_id, user_id, balance, last_daily)
+            VALUES (?, ?, ?, 0)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET balance = balance - excluded.balance
+            """,
+            (guild_id, user_id, price),
+        )
+
+        # Insert into inventory
+        cursor.execute(
+            """
+            INSERT INTO user_inventory (guild_id, user_id, item_id, item_name, role_id, purchased_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (guild_id, user_id, item["id"], item["item_name"], item.get("role_id"), time.time()),
+        )
+        conn.commit()
+        return True, f"✅ Successfully purchased **{item['item_name']}** for **{price:,} Coins**!", item
+
+
+async def buy_shop_item(
+    guild_id: int, user_id: int, item_id: int
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    return await asyncio.to_thread(_buy_shop_item_sync, guild_id, user_id, item_id)
+
+
+def _get_user_inventory_sync(guild_id: int, user_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, guild_id, user_id, item_id, item_name, role_id, purchased_at
+            FROM user_inventory
+            WHERE guild_id = ? AND user_id = ?
+            ORDER BY id DESC
+            """,
+            (guild_id, user_id),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_user_inventory(guild_id: int, user_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_user_inventory_sync, guild_id, user_id)
+
+
+def _claim_work_sync(
+    guild_id: int,
+    user_id: int,
+    min_reward: int = 50,
+    max_reward: int = 150,
+    cooldown_seconds: float = 3600.0,
+) -> Tuple[bool, int, int, float]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT balance, last_work FROM user_economy WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        row = cursor.fetchone()
+        now = time.time()
+
+        if row:
+            balance = row["balance"]
+            last_work = row["last_work"] if "last_work" in row.keys() and row["last_work"] is not None else 0.0
+            elapsed = now - last_work
+            if elapsed < cooldown_seconds:
+                return False, 0, balance, cooldown_seconds - elapsed
+        else:
+            balance = 100
+
+        import random
+        earned = random.randint(min_reward, max_reward)
+        new_balance = balance + earned
+
+        conn.execute(
+            """
+            INSERT INTO user_economy (guild_id, user_id, balance, last_daily, last_work)
+            VALUES (?, ?, ?, 0, ?)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET balance = balance + excluded.balance, last_work = excluded.last_work
+            """,
+            (guild_id, user_id, earned, now),
+        )
+        conn.commit()
+        return True, earned, new_balance, 0.0
+
+
+async def claim_work(
+    guild_id: int,
+    user_id: int,
+    min_reward: int = 50,
+    max_reward: int = 150,
+    cooldown_seconds: float = 3600.0,
+) -> Tuple[bool, int, int, float]:
+    return await asyncio.to_thread(
+        _claim_work_sync, guild_id, user_id, min_reward, max_reward, cooldown_seconds
+    )
+
 
 
 
