@@ -165,6 +165,17 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/verifystatus`: Check active verification channel and role assignments.
 - `/verifyremove`: Disables the verification gate.
 
+### 25. 🔊 Join-to-Create Dynamic Temp Voice Channels (`cogs/tempvc.py`)
+- `/tempvc setup [category] [channel_name]`: Deploys a master `"➕ Join to Create"` generator voice channel.
+- **Automated Channel Lifecycle**:
+  - When members connect to the generator, the bot creates a private voice channel for them and moves them into it instantly.
+  - Automatically cleans up and deletes the channel when all members leave.
+- **Channel Owner Controls (`/vc`)**:
+  - `/vc lock` & `/vc unlock`: Toggle whether other members can connect.
+  - `/vc limit [number]`: Set a user capacity (0 for unlimited, 1–99).
+  - `/vc name [new_name]`: Rename your temporary voice channel.
+- `/tempvc status` & `/tempvc remove`: Manage Temp VC configuration.
+
 ---
 
 ## 🗂️ Project Structure
@@ -192,13 +203,14 @@ RookieBot/
 │   ├── sticky.py        # Persistent bottom-pinned notices (/sticky)
 │   ├── suggestions.py   # Suggestions with persistent voting buttons (/suggest)
 │   ├── tags.py          # Custom tags & auto-FAQ with autocomplete (/tag)
+│   ├── tempvc.py        # Join-to-Create dynamic voice channels & controls (/tempvc, /vc)
 │   ├── tickets.py       # Support ticket panels with private channels (/ticketsetup)
 │   ├── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 58-test automated test suite
+├── test_bot.py          # Comprehensive 60-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -211,17 +223,17 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 24 Cogs, 53 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 25 Cogs, 55 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 58 test cases pass with a 100% success rate:
-- ✅ 24 Cogs discovery & extension loading
-- ✅ 53 Slash commands registered in command tree
-- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
+All 60 test cases pass with a 100% success rate:
+- ✅ 25 Cogs discovery & extension loading
+- ✅ 55 Slash commands registered in command tree
+- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)
 - ✅ End-to-end slash command callback runtime execution

@@ -267,6 +267,28 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS temp_vc_settings (
+                guild_id INTEGER PRIMARY KEY,
+                master_channel_id INTEGER,
+                category_id INTEGER DEFAULT NULL,
+                is_enabled INTEGER DEFAULT 1
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS temp_vc_channels (
+                channel_id INTEGER PRIMARY KEY,
+                guild_id INTEGER,
+                owner_id INTEGER,
+                created_at REAL
+            )
+            """
+        )
+
         try:
             conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
         except sqlite3.OperationalError:
@@ -1595,6 +1617,110 @@ def _disable_verification_sync(guild_id: int) -> bool:
 
 async def disable_verification(guild_id: int) -> bool:
     return await asyncio.to_thread(_disable_verification_sync, guild_id)
+
+
+# ---------------------------------------------------------------------------
+# Join-to-Create Temporary Voice Channels Database Operations
+# ---------------------------------------------------------------------------
+
+def _set_temp_vc_settings_sync(
+    guild_id: int, master_channel_id: int, category_id: Optional[int] = None
+):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO temp_vc_settings (guild_id, master_channel_id, category_id, is_enabled)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                master_channel_id = excluded.master_channel_id,
+                category_id = excluded.category_id,
+                is_enabled = 1
+            """,
+            (guild_id, master_channel_id, category_id),
+        )
+        conn.commit()
+
+
+async def set_temp_vc_settings(
+    guild_id: int, master_channel_id: int, category_id: Optional[int] = None
+):
+    await asyncio.to_thread(
+        _set_temp_vc_settings_sync, guild_id, master_channel_id, category_id
+    )
+
+
+def _get_temp_vc_settings_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT guild_id, master_channel_id, category_id, is_enabled FROM temp_vc_settings WHERE guild_id = ?",
+            (guild_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_temp_vc_settings(guild_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_temp_vc_settings_sync, guild_id)
+
+
+def _disable_temp_vc_sync(guild_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE temp_vc_settings SET is_enabled = 0 WHERE guild_id = ?",
+            (guild_id,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def disable_temp_vc(guild_id: int) -> bool:
+    return await asyncio.to_thread(_disable_temp_vc_sync, guild_id)
+
+
+def _add_temp_channel_sync(channel_id: int, guild_id: int, owner_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO temp_vc_channels (channel_id, guild_id, owner_id, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (channel_id, guild_id, owner_id, time.time()),
+        )
+        conn.commit()
+
+
+async def add_temp_channel(channel_id: int, guild_id: int, owner_id: int):
+    await asyncio.to_thread(_add_temp_channel_sync, channel_id, guild_id, owner_id)
+
+
+def _get_temp_channel_sync(channel_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT channel_id, guild_id, owner_id, created_at FROM temp_vc_channels WHERE channel_id = ?",
+            (channel_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_temp_channel(channel_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_temp_channel_sync, channel_id)
+
+
+def _delete_temp_channel_sync(channel_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM temp_vc_channels WHERE channel_id = ?", (channel_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def delete_temp_channel(channel_id: int) -> bool:
+    return await asyncio.to_thread(_delete_temp_channel_sync, channel_id)
+
 
 
 

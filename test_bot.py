@@ -63,8 +63,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_24_cogs_loaded(self):
-        """Verify all 24 Cogs are discovered and successfully loaded."""
+    def test_all_25_cogs_loaded(self):
+        """Verify all 25 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
@@ -86,6 +86,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "Sticky",
             "Suggestions",
             "Tags",
+            "TempVC",
             "Tickets",
             "Utility",
             "Verification",
@@ -98,8 +99,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_53_slash_commands_registered(self):
-        """Verify all 53 application commands are present in the command tree."""
+    def test_all_55_slash_commands_registered(self):
+        """Verify all 55 application commands are present in the command tree."""
         expected_commands = {
             "afk",
             "automod",
@@ -143,12 +144,14 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "suggest",
             "suggeststatus",
             "tag",
+            "tempvc",
             "ticketsetup",
             "timeout",
             "unban",
             "unlock",
             "untimeout",
             "userinfo",
+            "vc",
             "verifyremove",
             "verifysetup",
             "verifystatus",
@@ -636,6 +639,39 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         cfg_disabled = await database.get_verification_settings(guild_id)
         self.assertEqual(cfg_disabled["is_enabled"], 0)
 
+    async def test_temp_vc_database_operations(self):
+        """Verify setting, fetching, and managing join-to-create voice channels."""
+        guild_id = 998844
+        master_id = 556677
+        cat_id = 112233
+        temp_vc_id = 445566
+        owner_id = 778899
+
+        # Initially None
+        self.assertIsNone(await database.get_temp_vc_settings(guild_id))
+
+        # Set settings
+        await database.set_temp_vc_settings(guild_id, master_id, cat_id)
+        cfg = await database.get_temp_vc_settings(guild_id)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["master_channel_id"], master_id)
+        self.assertEqual(cfg["category_id"], cat_id)
+        self.assertEqual(cfg["is_enabled"], 1)
+
+        # Track temp channel
+        await database.add_temp_channel(temp_vc_id, guild_id, owner_id)
+        channel_data = await database.get_temp_channel(temp_vc_id)
+        self.assertIsNotNone(channel_data)
+        self.assertEqual(channel_data["owner_id"], owner_id)
+
+        # Delete temp channel
+        self.assertTrue(await database.delete_temp_channel(temp_vc_id))
+        self.assertIsNone(await database.get_temp_channel(temp_vc_id))
+
+        # Disable temp VC
+        self.assertTrue(await database.disable_temp_vc(guild_id))
+        self.assertEqual((await database.get_temp_vc_settings(guild_id))["is_enabled"], 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -772,6 +808,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         user.top_role = MagicMock()
         user.roles = []
         user.guild_permissions = discord.Permissions.all()
+        user.guild = guild
 
         # Target user for economy pay
         target_user = MagicMock(spec=discord.Member)
@@ -1036,6 +1073,42 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         # Test verification button click
         verify_btn_view = VerifyLaunchView()
         await verify_btn_view.children[0].callback(interaction)
+
+        # -------------------------------------------------------------
+        # TempVC Cog Commands & Voice Listeners
+        # -------------------------------------------------------------
+        tempvc_cog = self.bot.get_cog("TempVC")
+        await tempvc_cog.tempvc_setup.callback(tempvc_cog, interaction, category=mock_category, channel_name="➕ Join to Create")
+        await tempvc_cog.tempvc_status.callback(tempvc_cog, interaction)
+        await tempvc_cog.tempvc_remove.callback(tempvc_cog, interaction)
+
+        # Mock owner in temporary voice channel
+        user.voice = MagicMock()
+        user.voice.channel = mock_voice
+        mock_voice.overwrites_for = MagicMock(return_value=discord.PermissionOverwrite())
+        mock_voice.set_permissions = AsyncMock()
+        await database.add_temp_channel(mock_voice.id, guild.id, user.id)
+
+        await tempvc_cog.vc_lock.callback(tempvc_cog, interaction)
+        await tempvc_cog.vc_unlock.callback(tempvc_cog, interaction)
+        await tempvc_cog.vc_limit.callback(tempvc_cog, interaction, limit=5)
+        await tempvc_cog.vc_name.callback(tempvc_cog, interaction, new_name="Chilling Room")
+
+        # Voice state listener testing
+        # 1. Join generator
+        master_state = MagicMock(spec=discord.VoiceState)
+        master_state.channel = mock_voice
+        await database.set_temp_vc_settings(guild.id, mock_voice.id, mock_category.id)
+        user.move_to = AsyncMock()
+        guild.create_voice_channel = AsyncMock(return_value=mock_voice)
+
+        await tempvc_cog.on_voice_state_update(user, MagicMock(channel=None), master_state)
+
+        # 2. Leave temp channel
+        leave_state = MagicMock(spec=discord.VoiceState)
+        leave_state.channel = None
+        mock_voice.members = []
+        await tempvc_cog.on_voice_state_update(user, master_state, leave_state)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

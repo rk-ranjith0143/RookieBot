@@ -181,6 +181,15 @@ class HelpCategorySelect(discord.ui.Select):
                 ),
                 inline=False,
             )
+            embed.add_field(
+                name="Dynamic Temp Voice Channels",
+                value=(
+                    "• `/tempvc setup [category]` - Create a master join-to-create channel.\n"
+                    "• `/vc lock` & `/vc unlock` - Channel owners can lock or unlock their channel.\n"
+                    "• `/vc limit [number]` & `/vc name [name]` - Adjust room capacity or rename."
+                ),
+                inline=False,
+            )
 
         elif category == "premium":
             embed = discord.Embed(
