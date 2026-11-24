@@ -284,4 +284,5 @@ docker compose logs -f
 
 - [Terms of Service](TERMS.md)
 - [Privacy Policy](PRIVACY.md)
+- [Security Policy](SECURITY.md)
 
