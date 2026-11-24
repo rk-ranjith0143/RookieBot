@@ -1,4 +1,4 @@
-# Rookie 🚀
+# RookieBot 🚀
 
 An enterprise-ready, modular, multi-tenant Discord community management and utility bot built with Python 3.12 and [discord.py 2.x](https://discordpy.readthedocs.io/).
 
@@ -125,7 +125,7 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 ## 🗂️ Project Structure
 
 ```text
-discord-utility-bot/
+RookieBot/
 ├── cogs/
 │   ├── afk.py           # /afk status and auto-response mention alerts
 │   ├── automod.py       # Anti-invite links, mass-mentions, and anti-spam

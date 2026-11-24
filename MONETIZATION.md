@@ -1,6 +1,6 @@
-# 💰 Rookie — Discord Bot Monetization Blueprint & Architecture
+# 💰 RookieBot — Discord Bot Monetization Blueprint & Architecture
 
-This guide details the complete monetization infrastructure implemented in Rookie, along with step-by-step instructions for launching your revenue streams: **Self-Serve SaaS Subscriptions**, **Stripe / Gumroad License Keys**, and **High-Ticket B2B Community Retainers**.
+This guide details the complete monetization infrastructure implemented in RookieBot, along with step-by-step instructions for launching your revenue streams: **Self-Serve SaaS Subscriptions**, **Stripe / Gumroad License Keys**, and **High-Ticket B2B Community Retainers**.
 
 ---
 
