@@ -255,6 +255,18 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS verification_settings (
+                guild_id INTEGER PRIMARY KEY,
+                channel_id INTEGER,
+                role_id INTEGER,
+                message_id INTEGER DEFAULT NULL,
+                is_enabled INTEGER DEFAULT 1
+            )
+            """
+        )
+
         try:
             conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
         except sqlite3.OperationalError:
@@ -1522,6 +1534,68 @@ def _clear_user_infractions_sync(guild_id: int, user_id: int) -> int:
 
 async def clear_user_infractions(guild_id: int, user_id: int) -> int:
     return await asyncio.to_thread(_clear_user_infractions_sync, guild_id, user_id)
+
+
+# ---------------------------------------------------------------------------
+# Verification Gate Database Operations
+# ---------------------------------------------------------------------------
+
+def _set_verification_settings_sync(
+    guild_id: int, channel_id: int, role_id: int, message_id: Optional[int] = None
+):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO verification_settings (guild_id, channel_id, role_id, message_id, is_enabled)
+            VALUES (?, ?, ?, ?, 1)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                channel_id = excluded.channel_id,
+                role_id = excluded.role_id,
+                message_id = excluded.message_id,
+                is_enabled = 1
+            """,
+            (guild_id, channel_id, role_id, message_id),
+        )
+        conn.commit()
+
+
+async def set_verification_settings(
+    guild_id: int, channel_id: int, role_id: int, message_id: Optional[int] = None
+):
+    await asyncio.to_thread(
+        _set_verification_settings_sync, guild_id, channel_id, role_id, message_id
+    )
+
+
+def _get_verification_settings_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT guild_id, channel_id, role_id, message_id, is_enabled FROM verification_settings WHERE guild_id = ?",
+            (guild_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_verification_settings(guild_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_verification_settings_sync, guild_id)
+
+
+def _disable_verification_sync(guild_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE verification_settings SET is_enabled = 0 WHERE guild_id = ?",
+            (guild_id,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def disable_verification(guild_id: int) -> bool:
+    return await asyncio.to_thread(_disable_verification_sync, guild_id)
+
 
 
 

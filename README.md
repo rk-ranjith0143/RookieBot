@@ -158,6 +158,13 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/clearwarns [member]`: Purge all warnings for a member.
 - Automatically mirrors warning cards to the designated moderation log channel (`/setlogs`).
 
+### 24. 🛡️ 1-Click Member Verification Gate (`cogs/verification.py`)
+- `/verifysetup [channel] [role] [title] [description]`: Deploys a persistent, interactive verification panel to stop automated bots and raid accounts.
+- Features a persistent **"✅ Verify"** button that survives bot reboots.
+- Clicking the button checks role hierarchy, grants the verified role, and confirms via private ephemeral messages.
+- `/verifystatus`: Check active verification channel and role assignments.
+- `/verifyremove`: Disables the verification gate.
+
 ---
 
 ## 🗂️ Project Structure
@@ -187,10 +194,11 @@ RookieBot/
 │   ├── tags.py          # Custom tags & auto-FAQ with autocomplete (/tag)
 │   ├── tickets.py       # Support ticket panels with private channels (/ticketsetup)
 │   ├── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
+│   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 56-test automated test suite
+├── test_bot.py          # Comprehensive 58-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -203,19 +211,19 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 23 Cogs, 50 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 24 Cogs, 53 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 56 test cases pass with a 100% success rate:
-- ✅ 23 Cogs discovery & extension loading
-- ✅ 50 Slash commands registered in command tree
-- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
+All 58 test cases pass with a 100% success rate:
+- ✅ 24 Cogs discovery & extension loading
+- ✅ 53 Slash commands registered in command tree
+- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
-- ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help)
+- ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)
 - ✅ End-to-end slash command callback runtime execution
 
 ---

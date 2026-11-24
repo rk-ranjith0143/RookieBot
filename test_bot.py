@@ -27,6 +27,7 @@ from cogs.roles import RoleButton
 from cogs.tickets import TicketLaunchView, CloseTicketView
 from cogs.suggestions import SuggestionVoteView
 from cogs.premium import PremiumUpgradeView, RedeemKeyModal
+from cogs.verification import VerifyLaunchView
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
 from bot import RookieBot, UtilityBot
@@ -62,8 +63,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_23_cogs_loaded(self):
-        """Verify all 23 Cogs are discovered and successfully loaded."""
+    def test_all_24_cogs_loaded(self):
+        """Verify all 24 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
@@ -87,6 +88,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "Tags",
             "Tickets",
             "Utility",
+            "Verification",
             "Warns",
         }
         loaded_cogs = set(self.bot.cogs.keys())
@@ -96,8 +98,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_50_slash_commands_registered(self):
-        """Verify all 50 application commands are present in the command tree."""
+    def test_all_53_slash_commands_registered(self):
+        """Verify all 53 application commands are present in the command tree."""
         expected_commands = {
             "afk",
             "automod",
@@ -147,6 +149,9 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "unlock",
             "untimeout",
             "userinfo",
+            "verifyremove",
+            "verifysetup",
+            "verifystatus",
             "warn",
             "warnings",
         }
@@ -608,6 +613,29 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cleared_count, 1)
         self.assertEqual(await database.get_user_warning_count(guild_id, user_id), 0)
 
+    async def test_verification_database_operations(self):
+        """Verify setting, fetching, and disabling verification gate settings."""
+        guild_id = 883311
+        channel_id = 445566
+        role_id = 998877
+
+        # Initially None
+        self.assertIsNone(await database.get_verification_settings(guild_id))
+
+        # Set settings
+        await database.set_verification_settings(guild_id, channel_id, role_id, message_id=123456)
+        cfg = await database.get_verification_settings(guild_id)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["channel_id"], channel_id)
+        self.assertEqual(cfg["role_id"], role_id)
+        self.assertEqual(cfg["message_id"], 123456)
+        self.assertEqual(cfg["is_enabled"], 1)
+
+        # Disable verification
+        self.assertTrue(await database.disable_verification(guild_id))
+        cfg_disabled = await database.get_verification_settings(guild_id)
+        self.assertEqual(cfg_disabled["is_enabled"], 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -676,6 +704,9 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
 
         prem_view = PremiumUpgradeView()
         self.assertEqual(prem_view.children[0].custom_id, "premium_btn_redeem")
+
+        verify_view = VerifyLaunchView()
+        self.assertEqual(verify_view.children[0].custom_id, "verify_member_btn")
 
     def test_reminder_time_parser(self):
         """Verify time string parsing into seconds."""
@@ -992,6 +1023,19 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await warn_cog.warnings.callback(warn_cog, interaction, member=warn_target)
         await warn_cog.delwarn.callback(warn_cog, interaction, infraction_id=1)
         await warn_cog.clearwarns.callback(warn_cog, interaction, member=warn_target)
+
+        # -------------------------------------------------------------
+        # Verification Cog Commands
+        # -------------------------------------------------------------
+        verify_cog = self.bot.get_cog("Verification")
+        user.add_roles = AsyncMock()
+        await verify_cog.verifysetup.callback(verify_cog, interaction, channel=channel, role=mock_role)
+        await verify_cog.verifystatus.callback(verify_cog, interaction)
+        await verify_cog.verifyremove.callback(verify_cog, interaction)
+
+        # Test verification button click
+        verify_btn_view = VerifyLaunchView()
+        await verify_btn_view.children[0].callback(interaction)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

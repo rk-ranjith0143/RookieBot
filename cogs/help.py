@@ -142,6 +142,15 @@ class HelpCategorySelect(discord.ui.Select):
                 ),
                 inline=False,
             )
+            embed.add_field(
+                name="Member Verification Gate",
+                value=(
+                    "• `/verifysetup [channel] [role]` - Deploy a 1-click verification panel to stop bots.\n"
+                    "• `/verifystatus` - View current verification gate status.\n"
+                    "• `/verifyremove` - Disable verification for this server."
+                ),
+                inline=False,
+            )
 
         elif category == "community":
             embed = discord.Embed(
