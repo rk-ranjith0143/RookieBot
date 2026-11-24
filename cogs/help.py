@@ -67,6 +67,9 @@ class HelpCategorySelect(discord.ui.Select):
             embed.add_field(
                 name="Punishments & Enforcement",
                 value=(
+                    "• `/warn [member] [reason]` - Formally warn member with auto-escalation (timeout/kick/ban).\n"
+                    "• `/warnings [member]` - View full warning & infraction log.\n"
+                    "• `/delwarn [id]` & `/clearwarns [member]` - Remove or purge infractions.\n"
                     "• `/kick [member] [reason]` - Kick a member from the server.\n"
                     "• `/ban [member] [reason] [delete_days]` - Ban a user with optional message purge.\n"
                     "• `/unban [user_id] [reason]` - Unban a user using their numeric ID.\n"

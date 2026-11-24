@@ -241,6 +241,20 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS infractions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                user_id INTEGER,
+                moderator_id INTEGER,
+                action_type TEXT DEFAULT 'warn',
+                reason TEXT,
+                created_at REAL
+            )
+            """
+        )
+
         try:
             conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
         except sqlite3.OperationalError:
@@ -1408,5 +1422,106 @@ def _remove_level_role_sync(guild_id: int, level: int) -> bool:
 
 async def remove_level_role(guild_id: int, level: int) -> bool:
     return await asyncio.to_thread(_remove_level_role_sync, guild_id, level)
+
+
+# ---------------------------------------------------------------------------
+# Infractions & Warnings Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_infraction_sync(
+    guild_id: int,
+    user_id: int,
+    moderator_id: int,
+    action_type: str = "warn",
+    reason: str = "No reason provided",
+) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO infractions (guild_id, user_id, moderator_id, action_type, reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (guild_id, user_id, moderator_id, action_type, reason, time.time()),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+async def add_infraction(
+    guild_id: int,
+    user_id: int,
+    moderator_id: int,
+    action_type: str = "warn",
+    reason: str = "No reason provided",
+) -> int:
+    return await asyncio.to_thread(
+        _add_infraction_sync, guild_id, user_id, moderator_id, action_type, reason
+    )
+
+
+def _get_user_infractions_sync(guild_id: int, user_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, guild_id, user_id, moderator_id, action_type, reason, created_at
+            FROM infractions
+            WHERE guild_id = ? AND user_id = ?
+            ORDER BY id ASC
+            """,
+            (guild_id, user_id),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_user_infractions(guild_id: int, user_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_user_infractions_sync, guild_id, user_id)
+
+
+def _get_user_warning_count_sync(guild_id: int, user_id: int) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM infractions WHERE guild_id = ? AND user_id = ? AND action_type = 'warn'",
+            (guild_id, user_id),
+        )
+        row = cursor.fetchone()
+        return row[0] if row else 0
+
+
+async def get_user_warning_count(guild_id: int, user_id: int) -> int:
+    return await asyncio.to_thread(_get_user_warning_count_sync, guild_id, user_id)
+
+
+def _delete_infraction_sync(guild_id: int, infraction_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM infractions WHERE guild_id = ? AND id = ?",
+            (guild_id, infraction_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def delete_infraction(guild_id: int, infraction_id: int) -> bool:
+    return await asyncio.to_thread(_delete_infraction_sync, guild_id, infraction_id)
+
+
+def _clear_user_infractions_sync(guild_id: int, user_id: int) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM infractions WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        conn.commit()
+        return cursor.rowcount
+
+
+async def clear_user_infractions(guild_id: int, user_id: int) -> int:
+    return await asyncio.to_thread(_clear_user_infractions_sync, guild_id, user_id)
+
 
 

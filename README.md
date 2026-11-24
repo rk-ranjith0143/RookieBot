@@ -147,6 +147,17 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/autoresponder list`: View all active automated responses with numeric IDs.
 - `/autoresponder delete [id]`: Delete an automated response trigger.
 
+### 23. ⚠️ Infractions & Warning System (`cogs/warns.py`)
+- `/warn [member] [reason]`: Issue formal warnings with direct message alerts, moderator tags, and SQLite persistence.
+- **Automated Punishment Escalation**:
+  - **3 Warnings**: Automatically times out member for 1 hour.
+  - **5 Warnings**: Automatically kicks member from server.
+  - **7 Warnings**: Automatically bans member from server.
+- `/warnings [member]`: View full infraction history for any member with timestamps and infraction IDs.
+- `/delwarn [id]`: Remove a specific infraction by its ID.
+- `/clearwarns [member]`: Purge all warnings for a member.
+- Automatically mirrors warning cards to the designated moderation log channel (`/setlogs`).
+
 ---
 
 ## 🗂️ Project Structure
@@ -175,10 +186,11 @@ RookieBot/
 │   ├── suggestions.py   # Suggestions with persistent voting buttons (/suggest)
 │   ├── tags.py          # Custom tags & auto-FAQ with autocomplete (/tag)
 │   ├── tickets.py       # Support ticket panels with private channels (/ticketsetup)
-│   └── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
+│   ├── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
+│   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 54-test automated test suite
+├── test_bot.py          # Comprehensive 56-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -191,17 +203,17 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 22 Cogs, 46 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 23 Cogs, 50 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 54 test cases pass with a 100% success rate:
-- ✅ 22 Cogs discovery & extension loading
-- ✅ 46 Slash commands registered in command tree
-- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
+All 56 test cases pass with a 100% success rate:
+- ✅ 23 Cogs discovery & extension loading
+- ✅ 50 Slash commands registered in command tree
+- ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help)
 - ✅ End-to-end slash command callback runtime execution

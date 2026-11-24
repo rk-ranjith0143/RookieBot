@@ -62,8 +62,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_22_cogs_loaded(self):
-        """Verify all 22 Cogs are discovered and successfully loaded."""
+    def test_all_23_cogs_loaded(self):
+        """Verify all 23 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
@@ -87,6 +87,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "Tags",
             "Tickets",
             "Utility",
+            "Warns",
         }
         loaded_cogs = set(self.bot.cogs.keys())
         self.assertEqual(
@@ -95,8 +96,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_46_slash_commands_registered(self):
-        """Verify all 46 application commands are present in the command tree."""
+    def test_all_50_slash_commands_registered(self):
+        """Verify all 50 application commands are present in the command tree."""
         expected_commands = {
             "afk",
             "automod",
@@ -106,8 +107,10 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "balance",
             "ban",
             "clear",
+            "clearwarns",
             "coinflip",
             "daily",
+            "delwarn",
             "embed",
             "giveaway",
             "hello",
@@ -144,6 +147,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "unlock",
             "untimeout",
             "userinfo",
+            "warn",
+            "warnings",
         }
         registered_commands = {cmd.name for cmd in self.bot.tree.get_commands()}
         self.assertEqual(
@@ -572,6 +577,37 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await database.remove_level_role(guild_id, level=5))
         self.assertEqual(len(await database.get_level_roles(guild_id)), 1)
 
+    async def test_infractions_database_operations(self):
+        """Verify adding, listing, counting, and clearing infractions."""
+        guild_id = 992211
+        user_id = 334455
+        mod_id = 112233
+
+        # Initially 0 warnings
+        self.assertEqual(await database.get_user_warning_count(guild_id, user_id), 0)
+        self.assertEqual(len(await database.get_user_infractions(guild_id, user_id)), 0)
+
+        # Add warnings
+        inf_id1 = await database.add_infraction(guild_id, user_id, mod_id, "warn", "Spamming in #general")
+        inf_id2 = await database.add_infraction(guild_id, user_id, mod_id, "warn", "Advertising without permit")
+        self.assertIsInstance(inf_id1, int)
+        self.assertIsInstance(inf_id2, int)
+
+        # Check count and list
+        self.assertEqual(await database.get_user_warning_count(guild_id, user_id), 2)
+        infractions = await database.get_user_infractions(guild_id, user_id)
+        self.assertEqual(len(infractions), 2)
+        self.assertEqual(infractions[0]["reason"], "Spamming in #general")
+
+        # Delete single infraction
+        self.assertTrue(await database.delete_infraction(guild_id, inf_id1))
+        self.assertEqual(await database.get_user_warning_count(guild_id, user_id), 1)
+
+        # Clear remaining infractions
+        cleared_count = await database.clear_user_infractions(guild_id, user_id)
+        self.assertEqual(cleared_count, 1)
+        self.assertEqual(await database.get_user_warning_count(guild_id, user_id), 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -932,6 +968,30 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await responder_cog.ar_add.callback(responder_cog, interaction, trigger="faq", response="Check info", match_type=match_choice)
         await responder_cog.ar_list.callback(responder_cog, interaction)
         await responder_cog.ar_delete.callback(responder_cog, interaction, responder_id=1)
+
+        # -------------------------------------------------------------
+        # Warns Cog Commands
+        # -------------------------------------------------------------
+        warn_cog = self.bot.get_cog("Warns")
+        warn_target = MagicMock(spec=discord.Member)
+        warn_target.id = 889900
+        warn_target.name = "WarnTarget"
+        warn_target.display_name = "WarnTarget"
+        warn_target.mention = "@WarnTarget"
+        warn_target.top_role = MagicMock()
+        warn_target.display_avatar.url = "https://example.com/avatar.png"
+        warn_target.send = AsyncMock()
+        warn_target.timeout = AsyncMock()
+        warn_target.kick = AsyncMock()
+        warn_target.ban = AsyncMock()
+
+        user.top_role.__le__ = MagicMock(return_value=False)
+        guild.me.top_role.__le__ = MagicMock(return_value=False)
+
+        await warn_cog.warn.callback(warn_cog, interaction, member=warn_target, reason="First warning")
+        await warn_cog.warnings.callback(warn_cog, interaction, member=warn_target)
+        await warn_cog.delwarn.callback(warn_cog, interaction, infraction_id=1)
+        await warn_cog.clearwarns.callback(warn_cog, interaction, member=warn_target)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)
