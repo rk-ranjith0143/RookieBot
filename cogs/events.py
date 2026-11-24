@@ -27,7 +27,7 @@ class Events(commands.Cog):
             except Exception as e:
                 print(f"⚠️ Could not guild-sync to {guild.name}: {e}")
 
-        print("Bot is ready and operational!")
+        print("Rookie is ready and operational!")
 
     @app_commands.command(name="setwelcome", description="Configure automated welcome greetings and custom channel")
     @app_commands.describe(

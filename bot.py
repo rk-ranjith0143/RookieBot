@@ -10,15 +10,20 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 
-class UtilityBot(commands.Bot):
-    """Modular Discord Utility Bot using Cog architecture."""
+class RookieBot(commands.Bot):
+    """Rookie - All-in-One Discord Utility & Community Bot."""
 
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
 
-        super().__init__(command_prefix="!", intents=intents)
+        activity = discord.Activity(
+            type=discord.ActivityType.watching,
+            name="over your server | /premium",
+        )
+
+        super().__init__(command_prefix="!", intents=intents, activity=activity)
 
     async def setup_hook(self):
         """Asynchronous initialization hook called before the bot connects."""
@@ -53,14 +58,18 @@ class UtilityBot(commands.Bot):
                 await interaction.response.send_message(msg, ephemeral=True)
 
         await self.tree.sync()
-        print("Slash commands synced successfully!")
+        print("Rookie slash commands synced successfully!")
+
+
+# Backward compatibility alias
+UtilityBot = RookieBot
 
 
 def main():
     if not TOKEN:
         raise ValueError("DISCORD_TOKEN environment variable is not set. Please check your .env file.")
 
-    bot = UtilityBot()
+    bot = RookieBot()
     bot.run(TOKEN)
 
 

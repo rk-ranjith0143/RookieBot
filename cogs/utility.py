@@ -39,10 +39,12 @@ class Utility(commands.Cog):
         except Exception as e:
             await status_msg.edit(content=f"❌ Failed to sync slash commands: `{e}`")
 
-    @app_commands.command(name="hello", description="Get a friendly greeting from the bot")
+    @app_commands.command(name="hello", description="Get a friendly greeting from Rookie")
     async def hello(self, interaction: discord.Interaction):
         """Friendly greeting command."""
-        await interaction.response.send_message(f"Hey {interaction.user.mention}! Welcome to the server. 👋")
+        await interaction.response.send_message(
+            f"Hey {interaction.user.mention}! I'm **Rookie**, your all-in-one server utility and community assistant. Type `/` to see my commands! 👋"
+        )
 
     @app_commands.command(name="roll", description="Roll a dice (default is 6 sides)")
     @app_commands.describe(sides="Number of sides on the dice (e.g., 6, 20, 100)")

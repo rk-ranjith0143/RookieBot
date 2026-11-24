@@ -1,7 +1,7 @@
-"""Automated Test Suite for Discord Utility Bot.
+"""Automated Test Suite for Rookie Discord Bot.
 
-Validates all 18 Cogs, 37 Slash Commands, Database Operations,
-Auto-Mod Regex, UI Modals/Buttons/Views, and Gamification logic.
+Validates all 19 Cogs, 39 Slash Commands, Database Operations,
+Auto-Mod Regex, UI Modals/Buttons/Views, Gamification, and Monetization.
 """
 
 import os
@@ -29,11 +29,11 @@ from cogs.suggestions import SuggestionVoteView
 from cogs.premium import PremiumUpgradeView, RedeemKeyModal
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
-from bot import UtilityBot
+from bot import RookieBot, UtilityBot
 
 
-class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
-    """Full automated test suite for all bot subsystems."""
+class TestRookieBot(unittest.IsolatedAsyncioTestCase):
+    """Full automated test suite for all Rookie bot subsystems."""
 
     async def asyncSetUp(self):
         # Use an isolated temporary database for tests
@@ -44,7 +44,7 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
 
         # Initialize mock bot instance
         os.environ["DISCORD_TOKEN"] = "test_token_for_automated_suite"
-        self.bot = UtilityBot()
+        self.bot = RookieBot()
 
         # Load all cogs
         cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
@@ -828,6 +828,10 @@ class TestDiscordUtilityBot(unittest.IsolatedAsyncioTestCase):
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)
+
+
+# Backward compatibility alias
+TestDiscordUtilityBot = TestRookieBot
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
-# Discord Utility Bot 🚀
+# Rookie 🚀
 
-An enterprise-ready, modular, multi-tenant Discord utility and community management bot built with Python 3.12 and [discord.py 2.x](https://discordpy.readthedocs.io/).
+An enterprise-ready, modular, multi-tenant Discord community management and utility bot built with Python 3.12 and [discord.py 2.x](https://discordpy.readthedocs.io/).
 
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
