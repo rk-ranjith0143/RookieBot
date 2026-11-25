@@ -396,6 +396,32 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS invite_stats (
+                guild_id INTEGER,
+                inviter_id INTEGER,
+                regular_count INTEGER DEFAULT 0,
+                leaves_count INTEGER DEFAULT 0,
+                bonus_count INTEGER DEFAULT 0,
+                PRIMARY KEY (guild_id, inviter_id)
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS invited_members (
+                guild_id INTEGER,
+                member_id INTEGER,
+                inviter_id INTEGER,
+                invite_code TEXT,
+                joined_at REAL,
+                PRIMARY KEY (guild_id, member_id)
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -2421,6 +2447,144 @@ def _mark_birthday_celebrated_sync(guild_id: int, user_id: int, year: int):
 
 async def mark_birthday_celebrated(guild_id: int, user_id: int, year: int):
     await asyncio.to_thread(_mark_birthday_celebrated_sync, guild_id, user_id, year)
+
+
+# ---------------------------------------------------------------------------
+# Invite & Referral Tracking Database Operations
+# ---------------------------------------------------------------------------
+
+def _record_member_invite_sync(guild_id: int, member_id: int, inviter_id: int, invite_code: str):
+    now = time.time()
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO invited_members (guild_id, member_id, inviter_id, invite_code, joined_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (guild_id, member_id, inviter_id, invite_code, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO invite_stats (guild_id, inviter_id, regular_count, leaves_count, bonus_count)
+            VALUES (?, ?, 1, 0, 0)
+            ON CONFLICT(guild_id, inviter_id) DO UPDATE SET
+                regular_count = regular_count + 1
+            """,
+            (guild_id, inviter_id),
+        )
+        conn.commit()
+
+
+async def record_member_invite(guild_id: int, member_id: int, inviter_id: int, invite_code: str):
+    await asyncio.to_thread(_record_member_invite_sync, guild_id, member_id, inviter_id, invite_code)
+
+
+def _record_invited_member_leave_sync(guild_id: int, member_id: int) -> Optional[int]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT inviter_id FROM invited_members WHERE guild_id = ? AND member_id = ?",
+            (guild_id, member_id),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        inviter_id = row["inviter_id"]
+        conn.execute(
+            """
+            INSERT INTO invite_stats (guild_id, inviter_id, regular_count, leaves_count, bonus_count)
+            VALUES (?, ?, 0, 1, 0)
+            ON CONFLICT(guild_id, inviter_id) DO UPDATE SET
+                leaves_count = leaves_count + 1
+            """,
+            (guild_id, inviter_id),
+        )
+        conn.execute(
+            "DELETE FROM invited_members WHERE guild_id = ? AND member_id = ?",
+            (guild_id, member_id),
+        )
+        conn.commit()
+        return inviter_id
+
+
+async def record_invited_member_leave(guild_id: int, member_id: int) -> Optional[int]:
+    return await asyncio.to_thread(_record_invited_member_leave_sync, guild_id, member_id)
+
+
+def _adjust_bonus_invites_sync(guild_id: int, inviter_id: int, delta: int) -> int:
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO invite_stats (guild_id, inviter_id, regular_count, leaves_count, bonus_count)
+            VALUES (?, ?, 0, 0, ?)
+            ON CONFLICT(guild_id, inviter_id) DO UPDATE SET
+                bonus_count = bonus_count + excluded.bonus_count
+            """,
+            (guild_id, inviter_id, delta),
+        )
+        conn.commit()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT regular_count, leaves_count, bonus_count FROM invite_stats WHERE guild_id = ? AND inviter_id = ?",
+            (guild_id, inviter_id),
+        )
+        row = cursor.fetchone()
+        return max(0, row["regular_count"] - row["leaves_count"] + row["bonus_count"]) if row else 0
+
+
+async def adjust_bonus_invites(guild_id: int, inviter_id: int, delta: int) -> int:
+    return await asyncio.to_thread(_adjust_bonus_invites_sync, guild_id, inviter_id, delta)
+
+
+def _get_user_invite_stats_sync(guild_id: int, inviter_id: int) -> Dict[str, int]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT regular_count, leaves_count, bonus_count FROM invite_stats WHERE guild_id = ? AND inviter_id = ?",
+            (guild_id, inviter_id),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return {"regular": 0, "leaves": 0, "bonus": 0, "total": 0}
+        r, l, b = row["regular_count"], row["leaves_count"], row["bonus_count"]
+        return {"regular": r, "leaves": l, "bonus": b, "total": max(0, r - l + b)}
+
+
+async def get_user_invite_stats(guild_id: int, inviter_id: int) -> Dict[str, int]:
+    return await asyncio.to_thread(_get_user_invite_stats_sync, guild_id, inviter_id)
+
+
+def _get_invite_leaderboard_sync(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT inviter_id, regular_count, leaves_count, bonus_count,
+                   MAX(0, regular_count - leaves_count + bonus_count) AS total
+            FROM invite_stats
+            WHERE guild_id = ?
+            ORDER BY total DESC, regular_count DESC
+            LIMIT ?
+            """,
+            (guild_id, limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_invite_leaderboard(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_invite_leaderboard_sync, guild_id, limit)
+
+
+def _reset_guild_invites_sync(guild_id: int):
+    with _get_connection() as conn:
+        conn.execute("DELETE FROM invite_stats WHERE guild_id = ?", (guild_id,))
+        conn.execute("DELETE FROM invited_members WHERE guild_id = ?", (guild_id,))
+        conn.commit()
+
+
+async def reset_guild_invites(guild_id: int):
+    await asyncio.to_thread(_reset_guild_invites_sync, guild_id)
 
 
 

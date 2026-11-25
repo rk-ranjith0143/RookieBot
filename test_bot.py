@@ -69,8 +69,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_26_cogs_loaded(self):
-        """Verify all 26 Cogs are discovered and successfully loaded."""
+    def test_all_27_cogs_loaded(self):
+        """Verify all 27 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
@@ -81,6 +81,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "Embeds",
             "Events",
             "Help",
+            "Invites",
             "Leveling",
             "Logging",
             "Moderation",
@@ -106,8 +107,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_65_slash_commands_registered(self):
-        """Verify all 65 application commands are present in the command tree."""
+    def test_all_69_slash_commands_registered(self):
+        """Verify all 69 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -130,6 +131,10 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "hello",
             "help",
             "inventory",
+            "invitebonus",
+            "inviteleaderboard",
+            "invitereset",
+            "invites",
             "kick",
             "leaderboard",
             "levelrole",
@@ -826,6 +831,31 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await database.remove_user_birthday(guild_id, user_id))
         self.assertTrue(await database.disable_birthday_settings(guild_id))
 
+    async def test_invites_database_operations(self):
+        """Verify invite tracking, leaver deductions, bonus adjustments, leaderboard, and reset."""
+        guild_id = 998877
+        inviter_id = 111000
+
+        await database.record_member_invite(guild_id, member_id=222001, inviter_id=inviter_id, invite_code="abc123")
+        await database.record_member_invite(guild_id, member_id=222002, inviter_id=inviter_id, invite_code="abc123")
+        stats = await database.get_user_invite_stats(guild_id, inviter_id)
+        self.assertEqual(stats, {"regular": 2, "leaves": 0, "bonus": 0, "total": 2})
+
+        left_inviter = await database.record_invited_member_leave(guild_id, member_id=222002)
+        self.assertEqual(left_inviter, inviter_id)
+        stats_after_leave = await database.get_user_invite_stats(guild_id, inviter_id)
+        self.assertEqual(stats_after_leave, {"regular": 2, "leaves": 1, "bonus": 0, "total": 1})
+
+        new_total = await database.adjust_bonus_invites(guild_id, inviter_id, 5)
+        self.assertEqual(new_total, 6)
+
+        board = await database.get_invite_leaderboard(guild_id, limit=5)
+        self.assertEqual(len(board), 1)
+        self.assertEqual(board[0]["total"], 6)
+
+        await database.reset_guild_invites(guild_id)
+        self.assertEqual(await database.get_user_invite_stats(guild_id, inviter_id), {"regular": 0, "leaves": 0, "bonus": 0, "total": 0})
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -1424,6 +1454,24 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await bday_cog.birthday_upcoming.callback(bday_cog, interaction)
         await bday_cog.birthday_disable.callback(bday_cog, interaction)
         await bday_cog.birthday_remove.callback(bday_cog, interaction)
+
+        # -------------------------------------------------------------
+        # Invites Cog Commands & Join/Leave Listeners
+        # -------------------------------------------------------------
+        inv_cog = self.bot.get_cog("Invites")
+        mock_inv = MagicMock(spec=discord.Invite)
+        mock_inv.code = "rookie123"
+        mock_inv.uses = 1
+        mock_inv.inviter = target_user
+        guild.invites = AsyncMock(return_value=[mock_inv])
+        inv_cog._invite_cache[guild.id] = {"rookie123": 0}
+
+        await inv_cog.on_member_join(user)
+        await inv_cog.invites.callback(inv_cog, interaction, member=target_user)
+        await inv_cog.inviteleaderboard.callback(inv_cog, interaction)
+        await inv_cog.invitebonus.callback(inv_cog, interaction, member=target_user, amount=3)
+        await inv_cog.on_member_remove(user)
+        await inv_cog.invitereset.callback(inv_cog, interaction)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

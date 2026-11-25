@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 102 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
+> View the complete text-based tutorials with exact Discord previews for all 106 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
@@ -196,6 +196,11 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/birthday set [month] [day]`, `/birthday view [member]`, `/birthday upcoming`, `/birthday remove`: Privacy-friendly birthday calendar & countdowns.
 - `/birthday setup [channel] [role]` & `/birthday disable`: Automated daily birthday cards with optional `@Birthday` role assignment.
 
+### 27. 📨 Invite & Referral Tracker (`cogs/invites.py`)
+- Real-time invite cache tracking regular joins and deducting leavers automatically.
+- `/invites [member]` & `/inviteleaderboard`: Inspect personal referral breakdowns and Top 10 server inviters.
+- `/invitebonus [member] [amount]` & `/invitereset`: Staff bonus invite adjustments and seasonal contest resets.
+
 ---
 
 ## 🗂️ Project Structure
@@ -212,6 +217,7 @@ RookieBot/
 │   ├── embeds.py        # Interactive announcement modal (/embed)
 │   ├── events.py        # Welcome & leave greetings (/setwelcome, /setleave)
 │   ├── help.py          # Interactive category dropdown help menu (/help)
+│   ├── invites.py       # Referral tracking & invite leaderboard (/invites)
 │   ├── leveling.py      # XP tracking, /rank cards, /leaderboard, and /levelrole
 │   ├── logging.py       # Audit logging for edits, deletes, and bans (/setlogs)
 │   ├── moderation.py    # /kick, /ban, /unban, /timeout, /clear, /lock, /slowmode
@@ -230,10 +236,10 @@ RookieBot/
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── wiki/
-│   └── README.md        # Step-by-step Discord command tutorials (16 modules)
+│   └── README.md        # Step-by-step Discord command tutorials (17 modules)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 68-test automated test suite
+├── test_bot.py          # Comprehensive 70-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -246,16 +252,16 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 26 Cogs, 65 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 27 Cogs, 69 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 68 test cases pass with a 100% success rate:
-- ✅ 26 Cogs discovery & extension loading
-- ✅ 65 Slash commands registered in command tree
+All 70 test cases pass with a 100% success rate:
+- ✅ 27 Cogs discovery & extension loading
+- ✅ 69 Slash commands registered in command tree
 - ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)
