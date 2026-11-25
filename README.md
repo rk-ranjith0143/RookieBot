@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 84 commands & workflows in **[wiki/README.md](wiki/README.md)**.
+> View the complete text-based tutorials with exact Discord previews for all 84 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
