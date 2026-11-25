@@ -740,6 +740,41 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(worked2)
         self.assertGreater(rem2, 0)
 
+    async def test_giveaways_database_operations(self):
+        """Verify persistent giveaway creation, querying due giveaways, and marking ended."""
+        import time as pytime
+        guild_id = 33333
+        channel_id = 44444
+        msg_id = 55555111
+        past_ts = pytime.time() - 5.0
+
+        await database.create_giveaway(
+            message_id=msg_id,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            host_id=10101,
+            prize="Discord Nitro",
+            winners_count=2,
+            ends_at=past_ts,
+        )
+
+        record = await database.get_giveaway(msg_id)
+        self.assertIsNotNone(record)
+        self.assertEqual(record["prize"], "Discord Nitro")
+        self.assertEqual(record["winners_count"], 2)
+        self.assertEqual(record["is_ended"], 0)
+
+        active = await database.get_active_giveaways(guild_id)
+        self.assertEqual(len(active), 1)
+
+        due = await database.get_due_giveaways(pytime.time())
+        self.assertEqual(len(due), 1)
+
+        ended = await database.mark_giveaway_ended(msg_id)
+        self.assertTrue(ended)
+        self.assertEqual(len(await database.get_active_giveaways(guild_id)), 0)
+        self.assertEqual(len(await database.get_due_giveaways(pytime.time())), 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -989,12 +1024,28 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await mod.unlock.callback(mod, interaction, channel=channel)
 
         # -------------------------------------------------------------
-        # Polls Cog Commands
+        # Polls & Persistent Giveaways Cog Commands
         # -------------------------------------------------------------
         polls = self.bot.get_cog("Polls")
         msg_mock = AsyncMock()
+        msg_mock.id = 987654321
+        reaction_mock = MagicMock()
+        reaction_mock.emoji = "🎉"
+
+        async def mock_react_users():
+            yield user
+
+        reaction_mock.users = mock_react_users
+        msg_mock.reactions = [reaction_mock]
+        channel.fetch_message = AsyncMock(return_value=msg_mock)
+        guild.get_channel = MagicMock(return_value=channel)
+
         interaction.original_response = AsyncMock(return_value=msg_mock)
         await polls.poll.callback(polls, interaction, question="Favorite Language?", option1="Python", option2="Rust")
+        await polls.giveaway_start.callback(polls, interaction, prize="VIP Role", duration=30, winners=1)
+        await polls.giveaway_list.callback(polls, interaction)
+        await polls.giveaway_end.callback(polls, interaction, message_id="987654321")
+        await polls.giveaway_reroll.callback(polls, interaction, message_id="987654321", winners=1)
 
         # -------------------------------------------------------------
         # Logging Cog Commands

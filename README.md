@@ -41,7 +41,7 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 
 ### 6. 📊 Polls & Giveaways (`cogs/polls.py`)
 - `/poll [question] [options...]`: Create multi-choice polls (up to 10 options) with automatic numbered reaction buttons, or simple Yes/No questions.
-- `/giveaway [duration] [prize]`: Host timed giveaways with reaction entry and automated random winner selection.
+- `/giveaway start / list / end / reroll`: Restart-safe timed giveaways persisted in SQLite with reaction entry, early ending, and winner rerolls.
 
 ### 7. 🎭 Interactive Self-Roles (`cogs/roles.py`)
 - `/rolepanel [title] [description] [roles...]`: Deploy persistent button self-role panels (up to 5 roles per view) that survive bot restarts.

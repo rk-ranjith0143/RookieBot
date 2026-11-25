@@ -329,6 +329,22 @@ def init_db_sync():
         except sqlite3.OperationalError:
             pass
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS giveaways (
+                message_id INTEGER PRIMARY KEY,
+                guild_id INTEGER,
+                channel_id INTEGER,
+                host_id INTEGER,
+                prize TEXT,
+                winners_count INTEGER DEFAULT 1,
+                ends_at REAL,
+                is_ended INTEGER DEFAULT 0,
+                created_at REAL
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -1958,6 +1974,104 @@ async def claim_work(
     return await asyncio.to_thread(
         _claim_work_sync, guild_id, user_id, min_reward, max_reward, cooldown_seconds
     )
+
+
+# ---------------------------------------------------------------------------
+# Persistent Giveaways Database Operations
+# ---------------------------------------------------------------------------
+
+def _create_giveaway_sync(
+    message_id: int,
+    guild_id: int,
+    channel_id: int,
+    host_id: int,
+    prize: str,
+    winners_count: int,
+    ends_at: float,
+):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO giveaways (
+                message_id, guild_id, channel_id, host_id, prize, winners_count, ends_at, is_ended, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+            """,
+            (message_id, guild_id, channel_id, host_id, prize, winners_count, ends_at, time.time()),
+        )
+        conn.commit()
+
+
+async def create_giveaway(
+    message_id: int,
+    guild_id: int,
+    channel_id: int,
+    host_id: int,
+    prize: str,
+    winners_count: int,
+    ends_at: float,
+):
+    await asyncio.to_thread(
+        _create_giveaway_sync, message_id, guild_id, channel_id, host_id, prize, winners_count, ends_at
+    )
+
+
+def _get_giveaway_sync(message_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM giveaways WHERE message_id = ?",
+            (message_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_giveaway(message_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_giveaway_sync, message_id)
+
+
+def _get_due_giveaways_sync(now: float) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM giveaways WHERE is_ended = 0 AND ends_at <= ?",
+            (now,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_due_giveaways(now: float) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_due_giveaways_sync, now)
+
+
+def _get_active_giveaways_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM giveaways WHERE guild_id = ? AND is_ended = 0 ORDER BY ends_at ASC",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_active_giveaways(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_active_giveaways_sync, guild_id)
+
+
+def _mark_giveaway_ended_sync(message_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE giveaways SET is_ended = 1 WHERE message_id = ?",
+            (message_id,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def mark_giveaway_ended(message_id: int) -> bool:
+    return await asyncio.to_thread(_mark_giveaway_ended_sync, message_id)
 
 
 

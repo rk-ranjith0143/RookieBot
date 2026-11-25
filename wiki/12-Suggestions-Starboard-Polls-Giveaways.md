@@ -16,7 +16,10 @@ Engage your community with structured idea voting, a starboard hall-of-fame, ins
 
 **Polls & Giveaways:**
 6. [`/poll`](#-poll) — Create a Yes/No or up to 10-option poll
-7. [`/giveaway`](#-giveaway) — Launch a timed giveaway with random winner selection
+7. [`/giveaway start`](#-giveaway-start) — Launch a restart-safe giveaway with random winner selection
+8. [`/giveaway list`](#-giveaway-list) — View active giveaways & copyable Message IDs
+9. [`/giveaway end`](#-giveaway-end) — End a giveaway early & draw winners now
+10. [`/giveaway reroll`](#-giveaway-reroll) — Pick new random winner(s) from an ended giveaway
 
 ---
 
@@ -231,14 +234,14 @@ Creates an instant reaction poll—either a quick **Yes/No (`👍`/`👎`)** pol
 
 ---
 
-## 🎉 `/giveaway`
+## 🎉 `/giveaway start`
 
-Starts a timed giveaway using `🎉` reactions and automatically picks random winners when time expires!
+Starts a **restart-safe** timed giveaway saved in SQLite using `🎉` reactions! Even if RookieBot restarts while a multi-hour giveaway is running, it remembers the end time and automatically draws winners when due.
 
 ### 1. Requirements & Overview
 | Property | Value |
 | :--- | :--- |
-| **Command Syntax** | `/giveaway prize:<text> duration:<minutes> [winners:<number>]` |
+| **Command Syntax** | `/giveaway start prize:<text> duration:<minutes> [winners:<number>]` |
 | **Who Can Use It** | `@everyone` |
 | **Bot Needs** | `Send Messages`, `Embed Links`, `Add Reactions` |
 
@@ -247,7 +250,12 @@ Starts a timed giveaway using `🎉` reactions and automatically picks random wi
 * **`duration`** *(Required)*: Length in **minutes** (must be `1` or more).
 * **`winners`** *(Optional)*: How many random winners to draw. Defaults to **`1`**.
 
-### 3. Exact What You See in Discord
+### 3. Exact Step-by-Step Process in Discord
+1. Type `/giveaway start`.
+2. Fill **`prize`** and **`duration`** (in minutes, e.g., `30`).
+3. *(Optional)* Set **`winners`** and press **`Enter`**.
+
+### 4. Exact What You See in Discord
 
 **A. Active Giveaway Card:**
 ```text
@@ -262,7 +270,7 @@ Starts a timed giveaway using `🎉` reactions and automatically picks random wi
 │                                                             │
 │ React with 🎉 to enter!                                     │
 │                                                             │
-│ Ends at                                                     │
+│ Ends at • ID: 987654321098765432                            │
 ├─────────────────────────────────────────────────────────────┤
 │ [🎉 1]                                                      │
 └─────────────────────────────────────────────────────────────┘
@@ -275,3 +283,55 @@ RookieBot edits the embed to green **`🎉 Giveaway Ended 🎉`** with the winne
 Congratulations @Sarah! You won the Discord Nitro (1 Month)! 🎁
 ```
 *(If nobody reacted, the embed turns grey with `No one entered the giveaway! 😢`.)*
+
+---
+
+## 📋 `/giveaway list`
+
+Lists up to **15** currently running giveaways in the server, including end countdowns and copyable **Message IDs** for `/giveaway end`.
+
+### Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 4:40 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🎉 Active Giveaways (1)                                     │
+│ • Discord Nitro (1 Month) (1 winner(s)) — Ends in 25 mins   │
+│   └ Message ID: 987654321098765432 in #giveaways            │
+│                                                             │
+│ Use /giveaway end or /giveaway reroll with the Message ID.  │
+└─────────────────────────────────────────────────────────────┘
+```
+*(If none running: `ℹ️ There are no active giveaways right now.`)*
+
+---
+
+## ⏹️ `/giveaway end`
+
+Ends an active giveaway immediately and picks winners right away. *(Only the giveaway host or staff with `Administrator`, `Manage Server`, or `Manage Messages` can run this.)*
+
+### 1. Exact Step-by-Step Process in Discord
+1. Copy the giveaway's **Message ID** from `/giveaway list` or the embed footer (`ID: ...`).
+2. Type `/giveaway end`, paste **`message_id`**, and press **`Enter`**.
+
+### 2. Exact What You See in Discord
+* **Private confirmation:** `✅ Giveaway for Discord Nitro (1 Month) ended and winners drawn!`
+* **Public announcement in the giveaway channel:** `Congratulations @Sarah! You won the Discord Nitro (1 Month)! 🎁`
+
+---
+
+## 🎲 `/giveaway reroll`
+
+Picks new random winner(s) from the `🎉` reactions on a giveaway message (great if a winner didn't claim their prize or left the server). *(Host or staff only.)*
+
+### 1. Parameters
+* **`message_id`** *(Required)*: Message ID of the giveaway.
+* **`winners`** *(Optional)*: Override how many new winners to pick.
+
+### 2. Exact What You See in Discord
+* **Private confirmation:** `🎲 Rerolled winners for Discord Nitro (1 Month)!`
+* **Public announcement in the giveaway channel:**
+  ```text
+  🤖 RookieBot  [APP]
+  🎲 Giveaway Reroll! New winner(s) for Discord Nitro (1 Month): @Jordan! 🎁
+  ```

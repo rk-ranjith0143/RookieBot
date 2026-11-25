@@ -47,7 +47,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
 | **[11. Temporary Voice Channels](11-Temporary-Voice-Channels.md)** | Join-to-Create voice rooms & owner controls | `/tempvc setup`, `/tempvc status`, `/tempvc remove`, `/vc lock`, `/vc unlock`, `/vc limit`, `/vc name` |
-| **[12. Suggestions, Starboard, Polls & Giveaways](12-Suggestions-Starboard-Polls-Giveaways.md)** | Upvote/downvote suggestions, ⭐ starboard, polls & giveaways | `/setsuggestchannel`, `/suggest`, `/suggeststatus`, `/starboard setup`, `/starboard disable`, `/poll`, `/giveaway` |
+| **[12. Suggestions, Starboard, Polls & Giveaways](12-Suggestions-Starboard-Polls-Giveaways.md)** | Upvote/downvote suggestions, ⭐ starboard, polls & restart-safe giveaways | `/setsuggestchannel`, `/suggest`, `/suggeststatus`, `/starboard setup`, `/starboard disable`, `/poll`, `/giveaway start`, `/giveaway list`, `/giveaway end`, `/giveaway reroll` |
 | **[13. Tags, Auto-Responder & Sticky](13-Tags-AutoResponder-and-Sticky.md)** | Autocomplete FAQ tags, keyword auto-replies & bottom-pinned notices | `/tag add`, `/tag get`, `/tag list`, `/tag delete`, `/autoresponder add`, `/autoresponder list`, `/autoresponder delete`, `/sticky set`, `/sticky remove` |
 
 ### 🧰 Section V: Utilities, Diagnostics & Monetization
