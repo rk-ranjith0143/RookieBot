@@ -24,7 +24,12 @@ from cogs.embeds import parse_color
 from cogs.leveling import render_progress_bar
 from cogs.automod import INVITE_REGEX
 from cogs.roles import RoleButton
-from cogs.tickets import TicketLaunchView, CloseTicketView
+from cogs.tickets import (
+    TicketLaunchView,
+    CloseTicketView,
+    extract_ticket_owner_id,
+    generate_ticket_transcript,
+)
 from cogs.suggestions import SuggestionVoteView
 from cogs.premium import PremiumUpgradeView, RedeemKeyModal
 from cogs.verification import VerifyLaunchView
@@ -793,6 +798,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
 
         close_view = CloseTicketView()
         self.assertEqual(close_view.children[0].custom_id, "ticket_close")
+        self.assertEqual(close_view.children[1].custom_id, "ticket_claim")
 
         role_btn = RoleButton(role_id=12345, label="Member")
         self.assertTrue(role_btn.custom_id.startswith("selfrole:role:12345"))
@@ -997,10 +1003,66 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await logging_cog.setlogs.callback(logging_cog, interaction, channel=channel)
 
         # -------------------------------------------------------------
-        # Tickets Cog Commands
+        # Tickets Cog Commands & Transcript / Claim Testing
         # -------------------------------------------------------------
         tix = self.bot.get_cog("Tickets")
-        await tix.ticketsetup.callback(tix, interaction, channel=channel)
+        await tix.ticketsetup.callback(tix, interaction, channel=channel, transcript_channel=channel)
+
+        self.assertEqual(extract_ticket_owner_id("Support ticket for User (ID: 123456)"), 123456)
+        self.assertIsNone(extract_ticket_owner_id("Random topic"))
+
+        ticket_ch = MagicMock(spec=discord.TextChannel)
+        ticket_ch.id = 778899
+        ticket_ch.name = "ticket-testuser"
+        ticket_ch.guild = guild
+        ticket_ch.topic = f"Support ticket for TestUser (ID: {user.id})"
+        ticket_ch.send = AsyncMock()
+        ticket_ch.edit = AsyncMock()
+        ticket_ch.delete = AsyncMock()
+
+        msg_entry = MagicMock()
+        msg_entry.created_at = discord.utils.utcnow()
+        msg_entry.author = user
+        msg_entry.content = "Hello, I need help with my role."
+        msg_entry.embeds = []
+        att_mock = MagicMock()
+        att_mock.filename = "screenshot.png"
+        att_mock.url = "https://example.com/screenshot.png"
+        msg_entry.attachments = [att_mock]
+
+        async def mock_history(limit=500, oldest_first=True):
+            yield msg_entry
+
+        ticket_ch.history = mock_history
+        transcript_text = await generate_ticket_transcript(ticket_ch)
+        self.assertIn("ticket-testuser", transcript_text)
+        self.assertIn("Hello, I need help with my role.", transcript_text)
+        self.assertIn("screenshot.png", transcript_text)
+
+        # Test Claim Ticket button
+        ticket_interaction = MagicMock(spec=discord.Interaction)
+        ticket_interaction.guild = guild
+        ticket_interaction.channel = ticket_ch
+        ticket_interaction.user = user
+        user.guild_permissions = discord.Permissions(administrator=True)
+        ticket_interaction.response = AsyncMock()
+        ticket_interaction.response.edit_message = AsyncMock()
+        ticket_interaction.response.send_message = AsyncMock()
+
+        close_view_inst = CloseTicketView()
+        await close_view_inst.claim_ticket.callback(ticket_interaction)
+        self.assertTrue(close_view_inst.children[1].disabled)
+        self.assertIn("Claimed by", close_view_inst.children[1].label)
+
+        # Test Close Ticket button with fast sleep patch
+        from unittest.mock import patch
+        guild.get_channel = MagicMock(return_value=channel)
+        guild.get_member = MagicMock(return_value=user)
+        user.send = AsyncMock()
+        with patch("cogs.tickets.asyncio.sleep", new=AsyncMock()):
+            await close_view_inst.close_ticket.callback(ticket_interaction)
+        ticket_ch.delete.assert_called_once()
+        self.assertTrue(channel.send.called)
 
         # -------------------------------------------------------------
         # AutoMod Cog Commands

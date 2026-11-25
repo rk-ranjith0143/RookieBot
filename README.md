@@ -12,9 +12,9 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 ## 🌟 Key Features & Cogs
 
 ### 1. 📩 Support Ticket System (`cogs/tickets.py`)
-- `/ticketsetup [channel]`: Deploy an interactive persistent ticket launcher panel.
-- Clicking **"Open Ticket"** instantly creates a private, permission-isolated support channel for the member and staff.
-- Includes a persistent **"Close Ticket"** button with confirmation prompts and automated ticket transcripts.
+- `/ticketsetup [channel] [category] [support_role] [transcript_channel]`: Deploy an interactive persistent ticket launcher panel.
+- Clicking **"📩 Open Ticket"** instantly creates a private, permission-isolated support channel for the member and staff.
+- Includes a persistent **"✋ Claim Ticket"** button for staff ownership and **"🔒 Close Ticket"** button that archives a `.txt` transcript to your transcript/mod-log channel and DMs the creator.
 
 ### 2. 📋 Audit & Moderation Logs (`cogs/logging.py`)
 - `/setlogs [channel]`: Designate an audit log channel.

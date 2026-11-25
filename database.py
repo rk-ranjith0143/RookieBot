@@ -35,6 +35,7 @@ def init_db_sync():
                 mod_log_channel_id INTEGER DEFAULT NULL,
                 ticket_category_id INTEGER DEFAULT NULL,
                 ticket_support_role_id INTEGER DEFAULT NULL,
+                ticket_transcript_channel_id INTEGER DEFAULT NULL,
                 suggestion_channel_id INTEGER DEFAULT NULL
             )
             """
@@ -45,6 +46,7 @@ def init_db_sync():
             "mod_log_channel_id",
             "ticket_category_id",
             "ticket_support_role_id",
+            "ticket_transcript_channel_id",
             "leave_channel_id",
             "welcome_message",
             "leave_message",
@@ -373,6 +375,7 @@ def _update_guild_setting_sync(guild_id: int, key: str, value: Any):
         "mod_log_channel_id",
         "ticket_category_id",
         "ticket_support_role_id",
+        "ticket_transcript_channel_id",
         "suggestion_channel_id",
     }
     if key not in allowed_keys:
