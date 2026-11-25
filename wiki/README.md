@@ -19,7 +19,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 
 ---
 
-## 🗂️ Complete Wiki Index (All 15 Modules)
+## 🗂️ Complete Wiki Index (All 16 Modules)
 
 ### 🛡️ Section I: Security, Moderation & Verification
 | Guide | What's Inside | Commands Covered |
@@ -49,6 +49,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | **[11. Temporary Voice Channels](11-Temporary-Voice-Channels.md)** | Join-to-Create voice rooms & owner controls | `/tempvc setup`, `/tempvc status`, `/tempvc remove`, `/vc lock`, `/vc unlock`, `/vc limit`, `/vc name` |
 | **[12. Suggestions, Starboard, Polls & Giveaways](12-Suggestions-Starboard-Polls-Giveaways.md)** | Upvote/downvote suggestions, ⭐ starboard, polls & restart-safe giveaways | `/setsuggestchannel`, `/suggest`, `/suggeststatus`, `/starboard setup`, `/starboard disable`, `/poll`, `/giveaway start`, `/giveaway list`, `/giveaway end`, `/giveaway reroll` |
 | **[13. Tags, Auto-Responder & Sticky](13-Tags-AutoResponder-and-Sticky.md)** | Autocomplete FAQ tags, keyword auto-replies & bottom-pinned notices | `/tag add`, `/tag get`, `/tag list`, `/tag delete`, `/autoresponder add`, `/autoresponder list`, `/autoresponder delete`, `/sticky set`, `/sticky remove` |
+| **[16. Birthdays & Celebrations](16-Birthdays-and-Celebrations.md)** | Member birthday calendar, countdowns & automated daily celebrations | `/birthday set`, `/birthday view`, `/birthday upcoming`, `/birthday remove`, `/birthday setup`, `/birthday disable` |
 
 ### 🧰 Section V: Utilities, Diagnostics & Monetization
 | Guide | What's Inside | Commands Covered |

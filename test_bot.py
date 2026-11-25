@@ -35,6 +35,7 @@ from cogs.premium import PremiumUpgradeView, RedeemKeyModal
 from cogs.verification import VerifyLaunchView
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
+from cogs.birthdays import is_valid_birthday, days_until_birthday
 from bot import RookieBot, UtilityBot
 
 
@@ -68,13 +69,14 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_25_cogs_loaded(self):
-        """Verify all 25 Cogs are discovered and successfully loaded."""
+    def test_all_26_cogs_loaded(self):
+        """Verify all 26 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "AutoMod",
             "AutoResponder",
             "AutoRole",
+            "Birthdays",
             "Economy",
             "Embeds",
             "Events",
@@ -104,8 +106,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_64_slash_commands_registered(self):
-        """Verify all 64 application commands are present in the command tree."""
+    def test_all_65_slash_commands_registered(self):
+        """Verify all 65 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -115,6 +117,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "avatar",
             "balance",
             "ban",
+            "birthday",
             "buy",
             "clear",
             "clearwarns",
@@ -793,6 +796,36 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(await database.get_active_giveaways(guild_id)), 0)
         self.assertEqual(len(await database.get_due_giveaways(pytime.time())), 0)
 
+    async def test_birthdays_database_operations(self):
+        """Verify birthday storage, validation, due queries, and celebration marking."""
+        guild_id = 445566
+        user_id = 778899
+
+        self.assertTrue(is_valid_birthday(2, 29))
+        self.assertFalse(is_valid_birthday(2, 30))
+        self.assertEqual(days_until_birthday(11, 25, today=datetime.date(2026, 11, 25)), 0)
+        self.assertEqual(days_until_birthday(11, 28, today=datetime.date(2026, 11, 25)), 3)
+
+        await database.set_birthday_settings(guild_id, channel_id=1234, role_id=5678)
+        cfg = await database.get_birthday_settings(guild_id)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["is_enabled"], 1)
+
+        await database.set_user_birthday(guild_id, user_id, month=11, day=25)
+        entry = await database.get_user_birthday(guild_id, user_id)
+        self.assertEqual(entry["month"], 11)
+        self.assertEqual(entry["day"], 25)
+
+        due = await database.get_due_birthdays(11, 25, 2026)
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0]["user_id"], user_id)
+
+        await database.mark_birthday_celebrated(guild_id, user_id, 2026)
+        self.assertEqual(len(await database.get_due_birthdays(11, 25, 2026)), 0)
+
+        self.assertTrue(await database.remove_user_birthday(guild_id, user_id))
+        self.assertTrue(await database.disable_birthday_settings(guild_id))
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -1379,6 +1412,18 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         leave_state.channel = None
         mock_voice.members = []
         await tempvc_cog.on_voice_state_update(user, master_state, leave_state)
+
+        # -------------------------------------------------------------
+        # Birthdays Cog Commands
+        # -------------------------------------------------------------
+        bday_cog = self.bot.get_cog("Birthdays")
+        month_choice = app_commands.Choice(name="November", value=11)
+        await bday_cog.birthday_setup.callback(bday_cog, interaction, channel=channel, role=mock_role)
+        await bday_cog.birthday_set.callback(bday_cog, interaction, month=month_choice, day=25)
+        await bday_cog.birthday_view.callback(bday_cog, interaction, member=None)
+        await bday_cog.birthday_upcoming.callback(bday_cog, interaction)
+        await bday_cog.birthday_disable.callback(bday_cog, interaction)
+        await bday_cog.birthday_remove.callback(bday_cog, interaction)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

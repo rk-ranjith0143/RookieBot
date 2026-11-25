@@ -372,6 +372,30 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS birthday_settings (
+                guild_id INTEGER PRIMARY KEY,
+                channel_id INTEGER,
+                role_id INTEGER DEFAULT NULL,
+                is_enabled INTEGER DEFAULT 1
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_birthdays (
+                guild_id INTEGER,
+                user_id INTEGER,
+                month INTEGER,
+                day INTEGER,
+                last_celebrated_year INTEGER DEFAULT 0,
+                PRIMARY KEY (guild_id, user_id)
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -2245,6 +2269,158 @@ async def attempt_rob(
     return await asyncio.to_thread(
         _attempt_rob_sync, guild_id, robber_id, target_id, cooldown_seconds
     )
+
+
+# ---------------------------------------------------------------------------
+# Birthdays & Auto-Celebration Database Operations
+# ---------------------------------------------------------------------------
+
+def _set_birthday_settings_sync(guild_id: int, channel_id: int, role_id: Optional[int] = None):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO birthday_settings (guild_id, channel_id, role_id, is_enabled)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                channel_id = excluded.channel_id,
+                role_id = excluded.role_id,
+                is_enabled = 1
+            """,
+            (guild_id, channel_id, role_id),
+        )
+        conn.commit()
+
+
+async def set_birthday_settings(guild_id: int, channel_id: int, role_id: Optional[int] = None):
+    await asyncio.to_thread(_set_birthday_settings_sync, guild_id, channel_id, role_id)
+
+
+def _get_birthday_settings_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT guild_id, channel_id, role_id, is_enabled FROM birthday_settings WHERE guild_id = ?",
+            (guild_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_birthday_settings(guild_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_birthday_settings_sync, guild_id)
+
+
+def _disable_birthday_settings_sync(guild_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE birthday_settings SET is_enabled = 0 WHERE guild_id = ?",
+            (guild_id,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def disable_birthday_settings(guild_id: int) -> bool:
+    return await asyncio.to_thread(_disable_birthday_settings_sync, guild_id)
+
+
+def _set_user_birthday_sync(guild_id: int, user_id: int, month: int, day: int):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO user_birthdays (guild_id, user_id, month, day, last_celebrated_year)
+            VALUES (?, ?, ?, ?, 0)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                month = excluded.month,
+                day = excluded.day
+            """,
+            (guild_id, user_id, month, day),
+        )
+        conn.commit()
+
+
+async def set_user_birthday(guild_id: int, user_id: int, month: int, day: int):
+    await asyncio.to_thread(_set_user_birthday_sync, guild_id, user_id, month, day)
+
+
+def _get_user_birthday_sync(guild_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT guild_id, user_id, month, day, last_celebrated_year FROM user_birthdays WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_user_birthday(guild_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_user_birthday_sync, guild_id, user_id)
+
+
+def _remove_user_birthday_sync(guild_id: int, user_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM user_birthdays WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def remove_user_birthday(guild_id: int, user_id: int) -> bool:
+    return await asyncio.to_thread(_remove_user_birthday_sync, guild_id, user_id)
+
+
+def _get_guild_birthdays_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT user_id, month, day FROM user_birthdays WHERE guild_id = ? ORDER BY month ASC, day ASC",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_guild_birthdays(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_guild_birthdays_sync, guild_id)
+
+
+def _get_due_birthdays_sync(month: int, day: int, current_year: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ub.guild_id, ub.user_id, ub.month, ub.day, bs.channel_id, bs.role_id
+            FROM user_birthdays ub
+            JOIN birthday_settings bs ON ub.guild_id = bs.guild_id
+            WHERE bs.is_enabled = 1
+              AND ub.month = ?
+              AND ub.day = ?
+              AND ub.last_celebrated_year < ?
+            """,
+            (month, day, current_year),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_due_birthdays(month: int, day: int, current_year: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_due_birthdays_sync, month, day, current_year)
+
+
+def _mark_birthday_celebrated_sync(guild_id: int, user_id: int, year: int):
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE user_birthdays SET last_celebrated_year = ? WHERE guild_id = ? AND user_id = ?",
+            (year, guild_id, user_id),
+        )
+        conn.commit()
+
+
+async def mark_birthday_celebrated(guild_id: int, user_id: int, year: int):
+    await asyncio.to_thread(_mark_birthday_celebrated_sync, guild_id, user_id, year)
 
 
 
