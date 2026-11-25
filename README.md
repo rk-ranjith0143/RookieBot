@@ -50,9 +50,11 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 
 ### 8. 🛡️ Auto-Moderation & Protection (`cogs/automod.py`)
 - **Anti-Invite Links**: Intercepts and purges unauthorized `discord.gg` / `discord.com/invite` links with temporary warnings.
+- **Custom Word Blacklist**: Smart whole-word and phrase filtering (`/automod word add / remove / list`) persisted per server in SQLite.
 - **Anti-Mass Mention**: Blocks messages tagging 5+ users or unauthorized `@everyone` / `@here` pings.
 - **Anti-Spam / Flood Protection**: Detects rapid message bursts (> 5 msgs in 5s) and issues automatic 60-second timeouts.
-- `/automod status`: Inspect server filter configurations.
+- **Auto Anti-Raid Join Guard**: Detects sudden join bursts (5+ joins within 10s), automatically contains raid accounts with a 10-minute timeout, and alerts `#mod-logs`.
+- `/automod status`: Inspect all 5 protection shields.
 - `/automod toggle [filter] [enabled]`: Administrators can toggle individual protections.
 
 ### 9. 🔨 Comprehensive Moderation Suite (`cogs/moderation.py`)

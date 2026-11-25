@@ -1,11 +1,13 @@
-# 🛡️ Module 3: AutoMod & Anti-Raid Shields
+# 🛡️ Module 3: AutoMod, Word Blacklist & Anti-Raid Shields
 
-RookieBot includes **3 automatic chat protection filters** that run 24/7 in the background—all **enabled by default** as soon as the bot joins your server.
+RookieBot includes **5 automatic protection shields** that run 24/7 in the background—all **enabled by default** as soon as the bot joins your server.
 
 ### 🧱 Built-In Automatic Shields
 1. **🔗 Anti-Invite Links**: Blocks unauthorized `discord.gg/...` and `discord.com/invite/...` links.
-2. **📢 Anti-Mass Mention**: Blocks messages pinging **5 or more users** at once, or unauthorized `@everyone`/`@here` attempts.
-3. **⚡ Anti-Spam / Flood**: Deletes messages if someone sends **more than 5 messages in 5 seconds**, and automatically applies a **1-minute timeout** if they hit **8+ messages in 5 seconds**.
+2. **🚫 Custom Word Blacklist**: Blocks your server's banned words and scam phrases (smart whole-word matching prevents false positives!).
+3. **📢 Anti-Mass Mention**: Blocks messages pinging **5 or more users** at once, or unauthorized `@everyone`/`@here` attempts.
+4. **⚡ Anti-Spam / Flood**: Deletes messages if someone sends **more than 5 messages in 5 seconds**, and automatically applies a **1-minute timeout** if they hit **8+ messages in 5 seconds**.
+5. **🚨 Auto Anti-Raid Join Guard**: Detects sudden join raids (**5+ members joining within 10 seconds**), places incoming raid accounts on a **10-minute containment timeout**, and alerts `#mod-logs`!
 
 ### 🛡️ Automatic Staff Exemptions
 AutoMod **never** deletes messages from:
@@ -16,15 +18,18 @@ AutoMod **never** deletes messages from:
 ---
 
 ## 📑 Commands in This Guide
-1. [`/automod status`](#-automod-status) — Check which shields are On or Off
+1. [`/automod status`](#-automod-status) — Check all 5 shields
 2. [`/automod toggle`](#-automod-toggle) — Turn individual shields On or Off
-3. [What Members See When Triggered](#-what-members-see-when-automod-triggers)
+3. [`/automod word add`](#-automod-word-add) — Add a word/phrase to the blacklist *(Admin)*
+4. [`/automod word remove`](#-automod-word-remove) — Remove a word from the blacklist *(Admin)*
+5. [`/automod word list`](#-automod-word-list) — View all blacklisted words privately *(Admin)*
+6. [What Members & Logs See When Triggered](#-what-members--logs-see-when-automod-triggers)
 
 ---
 
 ## 🔍 `/automod status`
 
-Displays the live On/Off status of all three AutoMod shields and lists who is exempt.
+Displays the live On/Off status of all five AutoMod shields and lists who is exempt.
 
 ### 1. Requirements & Overview
 | Property | Value |
@@ -35,12 +40,7 @@ Displays the live On/Off status of all three AutoMod shields and lists who is ex
 | **Where It Works** | Any server text channel |
 | **What Discord Shows** | Public Embed |
 
-### 2. Exact Step-by-Step Process in Discord
-1. Type `/automod status` in the message box.
-2. Click **`/automod status`** from the slash popup.
-3. Press **`Enter`** (no extra options needed).
-
-### 3. Exact What You See in Discord
+### 2. Exact What You See in Discord
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │ 🤖 RookieBot  [APP]  Today at 1:20 PM                        │
@@ -56,11 +56,18 @@ Displays the live On/Off status of all three AutoMod shields and lists who is ex
 │ ⚡ Anti-Spam / Flood                                        │
 │ 🟢 Enabled (Deletes rapid flood > 5 msgs/5s)                │
 │                                                             │
+│ 🚫 Custom Word Blacklist                                    │
+│ 🟢 Enabled (3 word(s))                                      │
+│                                                             │
+│ 🚨 Auto Anti-Raid Join Guard                                │
+│ 🟢 Enabled (Flags 5+ joins/10s)                             │
+│                                                             │
 │ 🛡️ Exemptions                                               │
 │ Server Owner, Administrators, and Members with              │
 │ Manage Messages / Manage Server.                            │
 │                                                             │
-│ Use /automod toggle to configure individual protections.    │
+│ Use /automod toggle or /automod word to configure           │
+│ protections.                                                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -75,7 +82,7 @@ Turns an individual AutoMod shield **On (`True`)** or **Off (`False`)**.
 | :--- | :--- |
 | **Command Syntax** | `/automod toggle filter_name:<choice> enabled:<True|False>` |
 | **Who Can Use It** | Members with **Manage Server** (`Manage Guild`) permission |
-| **Bot Needs** | `Manage Messages` (to delete rule-breaking msgs), `Timeout Members` (for flood timeout) |
+| **Bot Needs** | `Manage Messages`, `Timeout Members` (`Moderate Members`) |
 | **Where It Works** | Any server text channel |
 | **What Discord Shows** | Public Embed |
 
@@ -84,15 +91,11 @@ Turns an individual AutoMod shield **On (`True`)** or **Off (`False`)**.
   * `Anti-Invite Links`
   * `Anti-Mass Mention`
   * `Anti-Spam / Flood`
+  * `Custom Word Blacklist`
+  * `Auto Anti-Raid Join Guard`
 * **`enabled`** *(Required)*: Choose **`True`** (enable) or **`False`** (disable).
 
-### 3. Exact Step-by-Step Process in Discord
-1. Type `/automod toggle` and select the command.
-2. In **`filter_name`**, click one of the 3 options from the list (e.g., `Anti-Invite Links`).
-3. Press **`Tab`**, then select **`True`** or **`False`** in **`enabled`**.
-4. Press **`Enter`**.
-
-### 4. Exact What You See in Discord
+### 3. Exact What You See in Discord
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │ 🤖 RookieBot  [APP]  Today at 1:25 PM                        │
@@ -104,35 +107,75 @@ Turns an individual AutoMod shield **On (`True`)** or **Off (`False`)**.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 5. Real-World Examples
-* **Allow Discord invite links (for a partner channel server):**
-  `/automod toggle filter_name:Anti-Invite Links enabled:False`
-* **Re-enable Anti-Spam:**
-  `/automod toggle filter_name:Anti-Spam / Flood enabled:True`
+---
+
+## 🚫 `/automod word add`
+
+Adds a banned word or scam phrase (`2` to `50` characters, case-insensitive, up to 100 entries per server).
+
+### 1. Exact Step-by-Step Process in Discord
+1. Type `/automod word add`.
+2. Enter **`word`** (e.g., `free nitro` or a banned word) and press **`Enter`**.
+
+### 2. Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 1:27 PM  👁️ Only you can see │
+├─────────────────────────────────────────────────────────────┤
+│ 🚫 Blacklisted Word Added                                   │
+│ free nitro will now be automatically blocked by AutoMod.    │
+└─────────────────────────────────────────────────────────────┘
+```
+*(If already present: `ℹ️ free nitro is already in the blacklist.`)*
 
 ---
 
-## 🚨 What Members See When AutoMod Triggers
+## 🗑️ `/automod word remove`
 
-When a regular member violates an active AutoMod rule, their message is **deleted immediately**, and RookieBot posts a brief warning that **auto-deletes itself after 5 seconds** to keep chat clean:
+Removes a word or phrase from your server's blacklist.
+
+### Exact What You See in Discord
+* **Removed:** `✅ Removed free nitro from the blacklist.` *(Only you can see this)*
+* **Not found:** `❌ free nitro was not found in the blacklist.` *(Only you can see this)*
+
+---
+
+## 📋 `/automod word list`
+
+Displays up to 50 blacklisted words privately (`👁️ Only you can see this`) so profanity or scam keywords never leak into public chat.
+
+### Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 1:29 PM  👁️ Only you can see │
+├─────────────────────────────────────────────────────────────┤
+│ 🚫 AutoMod Blacklisted Words (2)                            │
+│ badword, free nitro                                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚨 What Members & Logs See When AutoMod Triggers
+
+When a regular member violates an active AutoMod rule, their message is **deleted immediately**, and RookieBot posts a brief warning that **auto-deletes itself after 5 seconds**:
 
 * **External Discord Invite Blocked:**
-  ```text
-  🤖 RookieBot  [APP]
-  ⚠️ @Member, posting external Discord invite links is not allowed!
-  ```
+  `⚠️ @Member, posting external Discord invite links is not allowed!`
+* **Blacklisted Word / Phrase Blocked:**
+  `⚠️ @Member, your message contained a restricted word or phrase.`
 * **Mass Mention Blocked (5+ pings or unauthorized `@everyone`):**
-  ```text
-  🤖 RookieBot  [APP]
-  ⚠️ @Member, mass mentions and spam pings are prohibited!
-  ```
+  `⚠️ @Member, mass mentions and spam pings are prohibited!`
 * **Chat Flood Warning (6–7 messages within 5 seconds):**
-  ```text
-  🤖 RookieBot  [APP]
-  ⚠️ @Member, please slow down! You are sending messages too quickly.
-  ```
+  `⚠️ @Member, please slow down! You are sending messages too quickly.`
 * **Severe Flood Auto-Timeout (8+ messages within 5 seconds):**
+  `⏳ @Member was placed on a 1-minute timeout for spamming.`
+* **Anti-Raid Join Burst (posted to `#mod-logs` when 5+ members join within 10s):**
   ```text
-  🤖 RookieBot  [APP]
-  ⏳ @Member was placed on a 1-minute timeout for spamming.
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🚨 Anti-Raid Alert Triggered                                │
+  │ Detected 5 joins within 10 seconds!                         │
+  │ Incoming join @Raider (123456789) has been placed on a      │
+  │ 10-minute containment timeout.                              │
+  └─────────────────────────────────────────────────────────────┘
   ```

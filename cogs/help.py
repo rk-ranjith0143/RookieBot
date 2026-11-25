@@ -85,7 +85,8 @@ class HelpCategorySelect(discord.ui.Select):
                     "• `/lock [channel] [reason]` - Lock a channel for `@everyone` during raids.\n"
                     "• `/unlock [channel]` - Restore default sending permissions.\n"
                     "• `/slowmode [seconds] [channel]` - Set channel rate limits (0 to 6 hours).\n"
-                    "• `/automod status` & `/automod toggle` - Manage invite, spam & mass-mention filters."
+                    "• `/automod status` & `/automod toggle` - Manage invite, spam, mention, word & anti-raid shields.\n"
+                    "• `/automod word add / remove / list` - Block custom restricted words or phrases."
                 ),
                 inline=False,
             )

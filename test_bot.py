@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import database
 from cogs.embeds import parse_color
 from cogs.leveling import render_progress_bar
-from cogs.automod import INVITE_REGEX
+from cogs.automod import INVITE_REGEX, find_blacklisted_word
 from cogs.roles import RoleButton
 from cogs.tickets import (
     TicketLaunchView,
@@ -807,6 +807,23 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
                 f"Invite regex incorrectly flagged: {text}",
             )
 
+    async def test_automod_word_blacklist_and_database(self):
+        """Verify blacklisted word storage and smart word-boundary matching."""
+        guild_id = 777111
+        self.assertTrue(await database.add_bad_word(guild_id, "scamlink", 123))
+        self.assertFalse(await database.add_bad_word(guild_id, "scamlink", 123))  # duplicate
+        self.assertTrue(await database.add_bad_word(guild_id, "free nitro", 123))
+
+        words = await database.get_bad_words(guild_id)
+        self.assertEqual(words, ["free nitro", "scamlink"])
+
+        self.assertEqual(find_blacklisted_word("Click this SCAMLINK now!", words), "scamlink")
+        self.assertEqual(find_blacklisted_word("claim your free nitro today", words), "free nitro")
+        self.assertIsNone(find_blacklisted_word("myscamlinker is harmless", words))
+
+        self.assertTrue(await database.remove_bad_word(guild_id, "scamlink"))
+        self.assertEqual(await database.get_bad_words(guild_id), ["free nitro"])
+
     # -----------------------------------------------------------------------
     # 4. UI Components, Colors, and Views
     # -----------------------------------------------------------------------
@@ -1152,12 +1169,23 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(channel.send.called)
 
         # -------------------------------------------------------------
-        # AutoMod Cog Commands
+        # AutoMod Cog Commands & Anti-Raid Join Guard
         # -------------------------------------------------------------
         am = self.bot.get_cog("AutoMod")
         await am.automod_status.callback(am, interaction)
         choice_mock = app_commands.Choice(name="Anti-Invite Links", value="anti_invite")
         await am.automod_toggle.callback(am, interaction, filter_name=choice_mock, enabled=True)
+        await am.word_add.callback(am, interaction, word="badword")
+        await am.word_list.callback(am, interaction)
+        await am.word_remove.callback(am, interaction, word="badword")
+
+        # Simulate rapid join burst triggering Anti-Raid timeout
+        guild.me.guild_permissions = discord.Permissions(administrator=True, moderate_members=True)
+        guild.me.top_role.__gt__ = MagicMock(return_value=True)
+        user.timeout = AsyncMock()
+        for _ in range(5):
+            await am.on_member_join(user)
+        self.assertTrue(user.timeout.called)
 
         # -------------------------------------------------------------
         # AFK Cog Commands

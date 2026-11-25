@@ -26,7 +26,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | :--- | :--- | :--- |
 | **[01. Core Moderation Suite](01-Moderation-Suite.md)** | Kicking, banning, timeouts, message purging, slowmode & channel locking | `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/clear`, `/slowmode`, `/lock`, `/unlock` |
 | **[02. Warnings & Infractions](02-Warnings-and-Infractions.md)** | Formal warnings with automatic **3 → 5 → 7** punishment escalation | `/warn`, `/warnings`, `/delwarn`, `/clearwarns` |
-| **[03. AutoMod Protection](03-AutoMod-Protection.md)** | Automatic anti-invite, anti-mass-mention & anti-flood shields | `/automod status`, `/automod toggle` |
+| **[03. AutoMod Protection](03-AutoMod-Protection.md)** | Anti-invite, custom word blacklist, mass-mention, anti-flood & anti-raid shields | `/automod status`, `/automod toggle`, `/automod word add`, `/automod word remove`, `/automod word list` |
 | **[04. Verification Gate](04-Verification-Gate.md)** | 1-click green `✅ Verify` gate for new server members | `/verifysetup`, `/verifystatus`, `/verifyremove` |
 
 ### 📩 Section II: Support, Roles, Logs & Server Stats

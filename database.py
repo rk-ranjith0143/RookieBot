@@ -30,6 +30,8 @@ def init_db_sync():
                 anti_invite INTEGER DEFAULT 1,
                 anti_spam INTEGER DEFAULT 1,
                 anti_mass_mention INTEGER DEFAULT 1,
+                anti_word_filter INTEGER DEFAULT 1,
+                anti_raid INTEGER DEFAULT 1,
                 welcome_channel_id INTEGER DEFAULT NULL,
                 leave_channel_id INTEGER DEFAULT NULL,
                 welcome_message TEXT DEFAULT NULL,
@@ -57,6 +59,12 @@ def init_db_sync():
         for col in migrations:
             try:
                 conn.execute(f"ALTER TABLE guild_settings ADD COLUMN {col} INTEGER DEFAULT NULL")
+            except sqlite3.OperationalError:
+                pass
+
+        for flag_col in ("anti_word_filter", "anti_raid"):
+            try:
+                conn.execute(f"ALTER TABLE guild_settings ADD COLUMN {flag_col} INTEGER DEFAULT 1")
             except sqlite3.OperationalError:
                 pass
 
@@ -347,6 +355,18 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS automod_badwords (
+                guild_id INTEGER,
+                word TEXT,
+                added_by INTEGER,
+                created_at REAL,
+                PRIMARY KEY (guild_id, word)
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -386,6 +406,8 @@ def _update_guild_setting_sync(guild_id: int, key: str, value: Any):
         "anti_invite",
         "anti_spam",
         "anti_mass_mention",
+        "anti_word_filter",
+        "anti_raid",
         "welcome_channel_id",
         "leave_channel_id",
         "welcome_message",
@@ -2074,6 +2096,59 @@ def _mark_giveaway_ended_sync(message_id: int) -> bool:
 
 async def mark_giveaway_ended(message_id: int) -> bool:
     return await asyncio.to_thread(_mark_giveaway_ended_sync, message_id)
+
+
+# ---------------------------------------------------------------------------
+# AutoMod Custom Word Blacklist Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_bad_word_sync(guild_id: int, word: str, added_by: int) -> bool:
+    clean = word.strip().lower()
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO automod_badwords (guild_id, word, added_by, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (guild_id, clean, added_by, time.time()),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def add_bad_word(guild_id: int, word: str, added_by: int) -> bool:
+    return await asyncio.to_thread(_add_bad_word_sync, guild_id, word, added_by)
+
+
+def _remove_bad_word_sync(guild_id: int, word: str) -> bool:
+    clean = word.strip().lower()
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM automod_badwords WHERE guild_id = ? AND word = ?",
+            (guild_id, clean),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def remove_bad_word(guild_id: int, word: str) -> bool:
+    return await asyncio.to_thread(_remove_bad_word_sync, guild_id, word)
+
+
+def _get_bad_words_sync(guild_id: int) -> List[str]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT word FROM automod_badwords WHERE guild_id = ? ORDER BY word ASC",
+            (guild_id,),
+        )
+        return [row["word"] for row in cursor.fetchall()]
+
+
+async def get_bad_words(guild_id: int) -> List[str]:
+    return await asyncio.to_thread(_get_bad_words_sync, guild_id)
 
 
 
