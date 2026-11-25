@@ -4,6 +4,9 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
+> **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
+> View the complete text-based tutorials with exact Discord previews for all 84 commands & workflows in **[wiki/README.md](wiki/README.md)**.
+
 ---
 
 ## 🌟 Key Features & Cogs
@@ -214,6 +217,8 @@ RookieBot/
 │   ├── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
+├── wiki/
+│   └── README.md        # Step-by-step Discord command tutorials (15 modules)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
 ├── test_bot.py          # Comprehensive 62-test automated test suite
