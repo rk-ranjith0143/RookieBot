@@ -172,9 +172,13 @@ Assigns a private staff channel to receive automatic real-time audit logs whenev
 
 Once `/setlogs` is active, RookieBot automatically posts these cards into `#mod-logs`:
 
-1. **🗑️ Message Deleted** (includes author, `#channel`, text content up to 1024 chars, attachment filenames, and Message ID)
-2. **✏️ Message Edited** (includes author, `#channel`, clickable `[Go to Message]` jump link, `Before` text, `After` text, and Message ID)
-3. **👋 Member Left** (includes member mention, ID, avatar, and updated `Total Members`)
-4. **🔨 Member Banned** (includes user mention, ID, and avatar)
-5. **🕊️ Member Unbanned** (includes user mention, ID, and avatar)
-6. **⚠️ Member Warned** (mirrored automatically whenever a mod runs `/warn`)
+1. **🗑️ Message Deleted** (author, `#channel`, text content up to 1024 chars, attachment filenames, Message ID)
+2. **✏️ Message Edited** (author, `#channel`, clickable `[Go to Message]` jump link, `Before` text, `After` text, Message ID)
+3. **📥 Member Joined** (member mention, ID, avatar, `Account Created`, `Bot Account?`, and updated `Total Members`)
+4. **👋 Member Left** (member mention, ID, avatar, and updated `Total Members`)
+5. **🏷️ Nickname Changed** (member mention, `Before` nickname, `After` nickname)
+6. **🎭 Member Roles Updated** (member mention, `➕ Added` roles, `➖ Removed` roles)
+7. **🔊 / 🔇 / 🔀 Voice Channel Activity** (Joined Voice Channel, Left Voice Channel, Switched Voice Channel)
+8. **🔨 Member Banned** (user mention, ID, and avatar)
+9. **🕊️ Member Unbanned** (user mention, ID, and avatar)
+10. **⚠️ Member Warned** (mirrored automatically whenever a mod runs `/warn`)

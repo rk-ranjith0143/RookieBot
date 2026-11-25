@@ -19,9 +19,10 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 ### 2. 📋 Audit & Moderation Logs (`cogs/logging.py`)
 - `/setlogs [channel]`: Designate an audit log channel.
 - Automatically tracks and logs:
-  - Deleted messages with author, channel, and content.
-  - Edited messages with side-by-side before/after diffs.
-  - Member bans, unbans, and server departures.
+  - Deleted messages with author, channel, content, and attachment names.
+  - Edited messages with side-by-side before/after diffs and jump links.
+  - Member joins, departures, bans, unbans, nickname changes, and role updates.
+  - Voice channel joins, leaves, and channel switches.
 
 ### 3. 📈 Leveling & Milestone Roles (`cogs/leveling.py`)
 - Automated chat activity XP system with 60s cooldowns to prevent spam abuse.

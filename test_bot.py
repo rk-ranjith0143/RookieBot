@@ -1048,10 +1048,46 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await polls.giveaway_reroll.callback(polls, interaction, message_id="987654321", winners=1)
 
         # -------------------------------------------------------------
-        # Logging Cog Commands
+        # Logging Cog Commands & Expanded Audit Listeners
         # -------------------------------------------------------------
         logging_cog = self.bot.get_cog("Logging")
         await logging_cog.setlogs.callback(logging_cog, interaction, channel=channel)
+
+        # Verify SQLite WAL mode is active
+        with database._get_connection() as conn:
+            mode = conn.execute("PRAGMA journal_mode;").fetchone()[0]
+            self.assertEqual(mode.lower(), "wal")
+
+        # Verify expanded audit listeners (join, nickname/role update, voice transitions)
+        guild.get_channel = MagicMock(return_value=channel)
+        channel.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True))
+        user.created_at = discord.utils.utcnow()
+        user.bot = False
+        user.nick = "OldNick"
+        user.roles = [mock_role]
+
+        after_user = MagicMock(spec=discord.Member)
+        after_user.id = user.id
+        after_user.guild = guild
+        after_user.bot = False
+        after_user.name = user.name
+        after_user.mention = user.mention
+        after_user.display_avatar = user.display_avatar
+        after_user.nick = "NewNick"
+        extra_role = MagicMock(spec=discord.Role)
+        extra_role.id = 888777
+        extra_role.mention = "@ExtraRole"
+        after_user.roles = [mock_role, extra_role]
+
+        await logging_cog.on_member_join(user)
+        await logging_cog.on_member_update(user, after_user)
+
+        vc_before = MagicMock(spec=discord.VoiceState)
+        vc_before.channel = None
+        vc_after = MagicMock(spec=discord.VoiceState)
+        vc_after.channel = mock_voice
+        await logging_cog.on_voice_state_update(user, vc_before, vc_after)
+        await logging_cog.on_voice_state_update(user, vc_after, vc_before)
 
         # -------------------------------------------------------------
         # Tickets Cog Commands & Transcript / Claim Testing

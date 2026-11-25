@@ -19,6 +19,8 @@ def _get_connection() -> sqlite3.Connection:
 def init_db_sync():
     """Create necessary database tables and perform migrations."""
     with _get_connection() as conn:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS guild_settings (
