@@ -111,13 +111,14 @@ class HelpCategorySelect(discord.ui.Select):
                 name="Server Economy & Shop",
                 value=(
                     "• `/balance [member]` - Check your wallet or another user's balance.\n"
-                    "• `/daily` - Claim 200 free coins every 24 hours.\n"
-                    "• `/work` - Work shifts to earn 50-150 coins.\n"
+                    "• `/richest` - View the Top 10 wealthiest server members.\n"
+                    "• `/daily` & `/work` - Claim 200 daily coins or work shifts (50-150 coins).\n"
                     "• `/pay [member] [amount]` - Send coins to another server member.\n"
-                    "• `/coinflip [bet] [choice]` - Double-or-nothing coin toss game.\n"
+                    "• `/coinflip [bet] [choice]` & `/slots [bet]` - Gamble coins & spin for jackpots.\n"
+                    "• `/rob [member]` - Attempt a risky coin heist (30m cooldown).\n"
+                    "• `/eco give / take` - Admin balance management.\n"
                     "• `/shop view` & `/shop add` - Browse or add items to the server shop.\n"
-                    "• `/buy [item_id]` - Purchase roles or items using coins.\n"
-                    "• `/inventory [member]` - View your purchased items and perks."
+                    "• `/buy [item_id]` & `/inventory [member]` - Buy items/roles & view inventory."
                 ),
                 inline=False,
             )

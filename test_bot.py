@@ -104,9 +104,10 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_59_slash_commands_registered(self):
-        """Verify all 59 application commands are present in the command tree."""
+    def test_all_64_slash_commands_registered(self):
+        """Verify all 64 application commands are present in the command tree."""
         expected_commands = {
+            "8ball",
             "afk",
             "automod",
             "autoresponder",
@@ -120,6 +121,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "coinflip",
             "daily",
             "delwarn",
+            "eco",
             "embed",
             "giveaway",
             "hello",
@@ -136,6 +138,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "rank",
             "redeem",
             "remindme",
+            "richest",
+            "rob",
             "role",
             "rolepanel",
             "roll",
@@ -146,6 +150,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "setsuggestchannel",
             "setwelcome",
             "shop",
+            "slots",
             "slowmode",
             "starboard",
             "sticky",
@@ -740,6 +745,19 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(worked2)
         self.assertGreater(rem2, 0)
 
+        # Test richest leaderboard and rob heist
+        await database.update_user_balance(guild_id, 556677, 1000)
+        top = await database.get_top_balances(guild_id, limit=5)
+        self.assertEqual(top[0]["user_id"], 556677)
+
+        allowed, _, _, _, _, _, _ = await database.attempt_rob(guild_id, work_user, 556677)
+        self.assertTrue(allowed)
+        # Immediate second rob blocked by cooldown
+        allowed2, _, _, _, _, rem_rob, reason = await database.attempt_rob(guild_id, work_user, 556677)
+        self.assertFalse(allowed2)
+        self.assertEqual(reason, "cooldown")
+        self.assertGreater(rem_rob, 0)
+
     async def test_giveaways_database_operations(self):
         """Verify persistent giveaway creation, querying due giveaways, and marking ended."""
         import time as pytime
@@ -999,6 +1017,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         util = self.bot.get_cog("Utility")
         await util.hello.callback(util, interaction)
         await util.roll.callback(util, interaction, sides=6)
+        await util.eight_ball.callback(util, interaction, question="Will RookieBot scale?")
         await util.serverinfo.callback(util, interaction)
         await util.userinfo.callback(util, interaction, member=None)
         await util.avatar.callback(util, interaction, user=None)
@@ -1209,6 +1228,11 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await eco_cog.coinflip.callback(eco_cog, interaction, bet=50, choice=coin_choice)
         await eco_cog.pay.callback(eco_cog, interaction, member=target_user, amount=50)
         await eco_cog.work.callback(eco_cog, interaction)
+        await eco_cog.richest.callback(eco_cog, interaction)
+        await eco_cog.slots.callback(eco_cog, interaction, bet=20)
+        await eco_cog.rob.callback(eco_cog, interaction, member=target_user)
+        await eco_cog.eco_give.callback(eco_cog, interaction, member=target_user, amount=100)
+        await eco_cog.eco_take.callback(eco_cog, interaction, member=target_user, amount=50)
         await eco_cog.shop_add.callback(eco_cog, interaction, name="VIP Role", price=50, description="VIP perks", role=mock_role)
         await eco_cog.shop_view.callback(eco_cog, interaction)
         await eco_cog.buy.callback(eco_cog, interaction, item_id=1)

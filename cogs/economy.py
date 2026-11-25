@@ -16,11 +16,15 @@ from database import (
     buy_shop_item,
     get_user_inventory,
     claim_work,
+    get_top_balances,
+    attempt_rob,
 )
+
+SLOT_SYMBOLS = ["🍒", "🍋", "🍇", "🔔", "💎", "7️⃣"]
 
 
 class Economy(commands.Cog):
-    """Server virtual economy, daily coin rewards, transactions, and mini-games."""
+    """Server virtual economy, daily coin rewards, shop, mini-games, and leaderboards."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -46,6 +50,41 @@ class Economy(commands.Cog):
         embed.add_field(name="Current Balance", value=f"**{bal:,} Coins**", inline=True)
         embed.set_footer(text="Use /daily to earn free coins every 24 hours!")
 
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="richest", description="View the Top 10 wealthiest members in this server")
+    async def richest(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        top_users = await get_top_balances(guild.id, limit=10)
+        if not top_users:
+            await interaction.response.send_message(
+                "🪙 No wallets recorded yet! Use `/daily` or `/work` to get started.",
+                ephemeral=True,
+            )
+            return
+
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        for idx, row in enumerate(top_users, start=1):
+            uid = row["user_id"]
+            member = guild.get_member(uid)
+            display = member.mention if member else f"User ID `{uid}`"
+            badge = medals[idx - 1] if idx <= 3 else f"`#{idx}`"
+            lines.append(f"{badge} **{display}** — **{row['balance']:,} Coins**")
+
+        embed = discord.Embed(
+            title=f"💰 {guild.name} — Richest Members",
+            description="\n\n".join(lines),
+            color=discord.Color.gold(),
+            timestamp=discord.utils.utcnow(),
+        )
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        embed.set_footer(text="Earn coins via /daily, /work, /slots, and /coinflip!")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="daily", description="Claim your daily coin reward (200 Coins)")
@@ -109,7 +148,7 @@ class Economy(commands.Cog):
 
         # Execute transaction
         await update_user_balance(guild.id, interaction.user.id, -amount)
-        receiver_new = await update_user_balance(guild.id, member.id, amount)
+        await update_user_balance(guild.id, member.id, amount)
 
         embed = discord.Embed(
             title="💸 Payment Successful",
@@ -183,6 +222,164 @@ class Economy(commands.Cog):
             )
 
         embed.set_footer(text=f"Player: {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="slots", description="Spin the 3-reel slot machine to win up to 10x your bet")
+    @app_commands.describe(bet="Amount of coins to wager")
+    async def slots(self, interaction: discord.Interaction, bet: int):
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        if bet <= 0:
+            await interaction.response.send_message("❌ Bet must be at least 1 Coin.", ephemeral=True)
+            return
+
+        balance = await get_user_balance(guild.id, interaction.user.id)
+        if balance < bet:
+            await interaction.response.send_message(
+                f"❌ Insufficient funds! You only have **{balance:,} Coins**.",
+                ephemeral=True,
+            )
+            return
+
+        reels = [random.choice(SLOT_SYMBOLS) for _ in range(3)]
+        reel_display = f"**[ {reels[0]} | {reels[1]} | {reels[2]} ]**"
+
+        if reels[0] == reels[1] == reels[2]:
+            if reels[0] == "7️⃣":
+                net_delta = bet * 9
+                outcome_title = f"🎰 JACKPOT! (+{net_delta:,} Coins)"
+            elif reels[0] == "💎":
+                net_delta = bet * 4
+                outcome_title = f"🎰 DIAMOND TRIPLE! (+{net_delta:,} Coins)"
+            else:
+                net_delta = bet * 2
+                outcome_title = f"🎰 TRIPLE MATCH! (+{net_delta:,} Coins)"
+            color = discord.Color.gold()
+        elif reels[0] == reels[1] or reels[1] == reels[2] or reels[0] == reels[2]:
+            net_delta = max(1, bet // 2)
+            outcome_title = f"🎰 Double Match! (+{net_delta:,} Coins)"
+            color = discord.Color.green()
+        else:
+            net_delta = -bet
+            outcome_title = f"🎰 No Match (-{bet:,} Coins)"
+            color = discord.Color.red()
+
+        new_bal = await update_user_balance(guild.id, interaction.user.id, net_delta)
+        embed = discord.Embed(
+            title=outcome_title,
+            description=f"{reel_display}\n\nNew Balance: **{new_bal:,} Coins**",
+            color=color,
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.set_footer(text=f"Player: {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="rob", description="Attempt to steal coins from another member (30m cooldown)")
+    @app_commands.describe(member="The member you want to attempt to rob")
+    async def rob(self, interaction: discord.Interaction, member: discord.Member):
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+
+        if member.id == interaction.user.id:
+            await interaction.response.send_message("❌ You cannot rob yourself!", ephemeral=True)
+            return
+        if member.bot:
+            await interaction.response.send_message("❌ You cannot rob a bot!", ephemeral=True)
+            return
+
+        allowed, success, amount, robber_new, _, remaining_sec, reason = await attempt_rob(
+            guild.id, interaction.user.id, member.id
+        )
+
+        if not allowed:
+            if reason == "cooldown":
+                mins = int(remaining_sec // 60)
+                secs = int(remaining_sec % 60)
+                await interaction.response.send_message(
+                    f"⏳ Lay low! You can attempt another heist in **{mins}m {secs}s**.",
+                    ephemeral=True,
+                )
+            else:
+                await interaction.response.send_message(
+                    f"❌ {member.mention} has fewer than **50 Coins**—not worth the risk!",
+                    ephemeral=True,
+                )
+            return
+
+        if success:
+            embed = discord.Embed(
+                title="🕵️ Heist Successful!",
+                description=(
+                    f"{interaction.user.mention} sneaked past security and stole **{amount:,} Coins** from {member.mention}! 💰\n\n"
+                    f"Your New Balance: **{robber_new:,} Coins**"
+                ),
+                color=discord.Color.green(),
+                timestamp=discord.utils.utcnow(),
+            )
+        else:
+            embed = discord.Embed(
+                title="🚓 Busted!",
+                description=(
+                    f"{interaction.user.mention} got caught trying to rob {member.mention} and paid a **{amount:,} Coin** fine!\n\n"
+                    f"Your New Balance: **{robber_new:,} Coins**"
+                ),
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow(),
+            )
+
+        await interaction.response.send_message(embed=embed)
+
+    # -----------------------------------------------------------------------
+    # Admin Economy Controls (/eco)
+    # -----------------------------------------------------------------------
+
+    eco_group = app_commands.Group(
+        name="eco",
+        description="Administrator commands to manage member coin balances",
+        default_permissions=discord.Permissions(administrator=True),
+    )
+
+    @eco_group.command(name="give", description="Grant coins to a member's wallet")
+    @app_commands.describe(member="Target member", amount="Number of coins to add")
+    async def eco_give(self, interaction: discord.Interaction, member: discord.Member, amount: int):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+        if amount <= 0:
+            await interaction.response.send_message("❌ Amount must be at least 1 Coin.", ephemeral=True)
+            return
+
+        new_bal = await update_user_balance(interaction.guild.id, member.id, amount)
+        embed = discord.Embed(
+            title="💸 Admin Coin Grant",
+            description=f"Added **+{amount:,} Coins** to {member.mention}.\nNew Balance: **{new_bal:,} Coins**",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow(),
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @eco_group.command(name="take", description="Deduct coins from a member's wallet")
+    @app_commands.describe(member="Target member", amount="Number of coins to remove")
+    async def eco_take(self, interaction: discord.Interaction, member: discord.Member, amount: int):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)
+            return
+        if amount <= 0:
+            await interaction.response.send_message("❌ Amount must be at least 1 Coin.", ephemeral=True)
+            return
+
+        new_bal = await update_user_balance(interaction.guild.id, member.id, -amount)
+        embed = discord.Embed(
+            title="📉 Admin Coin Deduction",
+            description=f"Removed **-{amount:,} Coins** from {member.mention}.\nNew Balance: **{new_bal:,} Coins**",
+            color=discord.Color.orange(),
+            timestamp=discord.utils.utcnow(),
+        )
         await interaction.response.send_message(embed=embed)
 
     shop_group = app_commands.Group(

@@ -335,6 +335,11 @@ def init_db_sync():
             pass
 
         try:
+            conn.execute("ALTER TABLE user_economy ADD COLUMN last_rob REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+
+        try:
             conn.execute("ALTER TABLE sticky_messages ADD COLUMN guild_id INTEGER DEFAULT NULL")
         except sqlite3.OperationalError:
             pass
@@ -2149,6 +2154,97 @@ def _get_bad_words_sync(guild_id: int) -> List[str]:
 
 async def get_bad_words(guild_id: int) -> List[str]:
     return await asyncio.to_thread(_get_bad_words_sync, guild_id)
+
+
+# ---------------------------------------------------------------------------
+# Economy Leaderboard & Heist (Rob) Database Operations
+# ---------------------------------------------------------------------------
+
+def _get_top_balances_sync(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT user_id, balance FROM user_economy
+            WHERE guild_id = ?
+            ORDER BY balance DESC
+            LIMIT ?
+            """,
+            (guild_id, limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_top_balances(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_top_balances_sync, guild_id, limit)
+
+
+def _attempt_rob_sync(
+    guild_id: int,
+    robber_id: int,
+    target_id: int,
+    cooldown_seconds: float = 1800.0,
+) -> Tuple[bool, bool, int, int, int, float, Optional[str]]:
+    """Attempt a heist on another member.
+
+    Returns (allowed, success, amount, robber_new_bal, target_new_bal, remaining_sec, reason).
+    """
+    import random
+    now = time.time()
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+
+        robber_bal = _get_user_balance_sync(guild_id, robber_id)
+        cursor.execute(
+            "SELECT last_rob FROM user_economy WHERE guild_id = ? AND user_id = ?",
+            (guild_id, robber_id),
+        )
+        r_row = cursor.fetchone()
+        last_rob = r_row["last_rob"] if r_row and "last_rob" in r_row.keys() and r_row["last_rob"] is not None else 0.0
+        elapsed = now - last_rob
+        if elapsed < cooldown_seconds:
+            return False, False, 0, robber_bal, 0, cooldown_seconds - elapsed, "cooldown"
+
+        target_bal = _get_user_balance_sync(guild_id, target_id)
+        if target_bal < 50:
+            return False, False, 0, robber_bal, target_bal, 0.0, "poor_target"
+
+        success = random.random() < 0.45
+        if success:
+            pct = random.uniform(0.15, 0.35)
+            stolen = max(10, min(target_bal, int(target_bal * pct)))
+            robber_new = robber_bal + stolen
+            target_new = target_bal - stolen
+            conn.execute(
+                "UPDATE user_economy SET balance = ?, last_rob = ? WHERE guild_id = ? AND user_id = ?",
+                (robber_new, now, guild_id, robber_id),
+            )
+            conn.execute(
+                "UPDATE user_economy SET balance = ? WHERE guild_id = ? AND user_id = ?",
+                (target_new, guild_id, target_id),
+            )
+            conn.commit()
+            return True, True, stolen, robber_new, target_new, 0.0, None
+        else:
+            fine = min(robber_bal, 50)
+            robber_new = max(0, robber_bal - fine)
+            conn.execute(
+                "UPDATE user_economy SET balance = ?, last_rob = ? WHERE guild_id = ? AND user_id = ?",
+                (robber_new, now, guild_id, robber_id),
+            )
+            conn.commit()
+            return True, False, fine, robber_new, target_bal, 0.0, None
+
+
+async def attempt_rob(
+    guild_id: int,
+    robber_id: int,
+    target_id: int,
+    cooldown_seconds: float = 1800.0,
+) -> Tuple[bool, bool, int, int, int, float, Optional[str]]:
+    return await asyncio.to_thread(
+        _attempt_rob_sync, guild_id, robber_id, target_id, cooldown_seconds
+    )
 
 
 

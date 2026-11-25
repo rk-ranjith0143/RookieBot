@@ -56,6 +56,37 @@ class Utility(commands.Cog):
         result = random.randint(1, sides)
         await interaction.response.send_message(f"🎲 You rolled a **{result}** (1–{sides})")
 
+    @app_commands.command(name="8ball", description="Ask the Magic 8-Ball a yes/no question")
+    @app_commands.describe(question="What do you want to ask the Magic 8-Ball?")
+    async def eight_ball(self, interaction: discord.Interaction, question: str):
+        """Classic Magic 8-Ball utility."""
+        responses = [
+            "It is certain. ✨",
+            "Without a doubt! ✅",
+            "Yes, definitely! 💯",
+            "You may rely on it. 👍",
+            "Most likely. 🎯",
+            "Outlook good! 🌟",
+            "Reply hazy, try again. 🌫️",
+            "Ask again later. ⏳",
+            "Better not tell you now... 🤫",
+            "Cannot predict now. 🔮",
+            "Don't count on it. ❌",
+            "My sources say no. 📉",
+            "Outlook not so good. 😬",
+            "Very doubtful. 🚫",
+        ]
+        answer = random.choice(responses)
+        embed = discord.Embed(
+            title="🎱 Magic 8-Ball",
+            color=discord.Color.purple(),
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.add_field(name="Question", value=question.strip()[:256], inline=False)
+        embed.add_field(name="Answer", value=f"**{answer}**", inline=False)
+        embed.set_footer(text=f"Asked by {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
+
     @app_commands.command(name="serverinfo", description="Display detailed information and statistics about this server")
     async def serverinfo(self, interaction: discord.Interaction):
         """Detailed server overview."""

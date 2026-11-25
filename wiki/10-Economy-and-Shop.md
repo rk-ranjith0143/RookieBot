@@ -7,17 +7,21 @@ A complete per-server virtual coin economy! Every member starts with **100 Coins
 ## 📑 Commands in This Guide
 **For All Members:**
 1. [`/balance`](#-balance) — Check coin wallet balance
-2. [`/daily`](#-daily) — Claim 200 free coins every 24 hours
-3. [`/work`](#-work) — Work a shift for 50–150 coins (1-hour cooldown)
-4. [`/pay`](#-pay) — Send coins to another member
-5. [`/coinflip`](#-coinflip) — Double-or-nothing Heads/Tails bet
-6. [`/shop view`](#-shop-view) — Browse all items and role rewards for sale
-7. [`/buy`](#-buy) — Purchase an item and unlock its role
-8. [`/inventory`](#-inventory) — View purchased items
+2. [`/richest`](#-richest) — View the Top 10 wealthiest server members
+3. [`/daily`](#-daily) — Claim 200 free coins every 24 hours
+4. [`/work`](#-work) — Work a shift for 50–150 coins (1-hour cooldown)
+5. [`/pay`](#-pay) — Send coins to another member
+6. [`/coinflip`](#-coinflip) — Double-or-nothing Heads/Tails bet
+7. [`/slots`](#-slots) — Spin the 3-reel slot machine (up to 10x jackpot)
+8. [`/rob`](#-rob) — Risky coin heist with 30-minute cooldown
+9. [`/shop view`](#-shop-view) — Browse all items and role rewards for sale
+10. [`/buy`](#-buy) — Purchase an item and unlock its role
+11. [`/inventory`](#-inventory) — View purchased items
 
 **For Server Administrators:**
-9. [`/shop add`](#-shop-add) — Add an item or purchasable role to the shop
-10. [`/shop remove`](#-shop-remove) — Delete an item from the shop
+12. [`/eco give` & `/eco take`](#-eco-give--eco-take-admin-only) — Add or deduct coins from any wallet
+13. [`/shop add`](#-shop-add) — Add an item or purchasable role to the shop
+14. [`/shop remove`](#-shop-remove) — Delete an item from the shop
 
 ---
 
@@ -43,6 +47,28 @@ Displays your wallet balance or another member's balance.
 │ 1,250 Coins                                                 │
 │                                                             │
 │ Use /daily to earn free coins every 24 hours!               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 💰 `/richest`
+
+Displays the **Top 10 wealthiest members** on the server ranked by coin balance.
+
+### Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 3:16 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ 💰 My Community Server — Richest Members                    │
+│ 🥇 @Sarah — 4,850 Coins                                     │
+│                                                             │
+│ 🥈 @Alex — 1,250 Coins                                      │
+│                                                             │
+│ 🥉 @Sam — 900 Coins                                         │
+│                                                             │
+│ Earn coins via /daily, /work, /slots, and /coinflip!        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -187,6 +213,52 @@ Double-or-nothing coin flip wager! Win to gain `+bet` coins, or lose `-bet` coin
 
 ---
 
+## 🎰 `/slots`
+
+Spins a 3-reel emoji slot machine (`🍒`, `🍋`, `🍇`, `🔔`, `💎`, `7️⃣`):
+* **Triple `7️⃣ 7️⃣ 7️⃣`:** `+9x` profit (**10x** total payout!)
+* **Triple `💎 💎 💎`:** `+4x` profit
+* **Any other triple:** `+2x` profit
+* **Any 2 matching symbols:** `+0.5x` profit (min `+1 Coin`)
+* **No match:** `-bet`
+
+### Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 3:23 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🎰 JACKPOT! (+900 Coins)                                    │
+│ [ 7️⃣ | 7️⃣ | 7️⃣ ]                                            │
+│                                                             │
+│ New Balance: 1,985 Coins                                    │
+│                                                             │
+│ Player: Alex                                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🕵️ `/rob`
+
+Attempts a risky heist against another human member (30-minute cooldown; target must have at least **50 Coins**):
+* **45% Success:** Steal **15%–35%** of the target's wallet!
+* **55% Caught:** Pay up to a **50 Coin** fine!
+
+### Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 3:24 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🕵️ Heist Successful!                                        │
+│ @Alex sneaked past security and stole 120 Coins from @Sam! 💰│
+│                                                             │
+│ Your New Balance: 2,105 Coins                               │
+└─────────────────────────────────────────────────────────────┘
+```
+*(Cooldown error: `⏳ Lay low! You can attempt another heist in 24m 10s.`)*
+
+---
+
 ## 🏪 `/shop view`
 
 Displays every item and purchasable role listed in the server shop, sorted from lowest to highest price, along with each item's **`#ID`**.
@@ -258,6 +330,28 @@ Shows up to 25 purchased items and unlocked roles for yourself or another member
 └─────────────────────────────────────────────────────────────┘
 ```
 *(If empty: `🎒 @Alex's inventory is empty. Browse items in /shop view!`)*
+
+---
+
+## ⚙️ `/eco give` & `/eco take` *(Admin Only)*
+
+Lets Administrators add coins to (`give`) or deduct coins from (`take`) any member's wallet—ideal for event prizes or economy balancing.
+
+### Exact Step-by-Step Process in Discord
+1. Type `/eco give` (or `/eco take`).
+2. Select **`member`** and enter **`amount`** (`1` or more).
+3. Press **`Enter`**.
+
+### Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 3:31 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ 💸 Admin Coin Grant                                         │
+│ Added +500 Coins to @Alex.                                  │
+│ New Balance: 2,605 Coins                                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 

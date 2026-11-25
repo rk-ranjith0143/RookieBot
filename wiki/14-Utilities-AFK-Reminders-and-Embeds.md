@@ -13,9 +13,10 @@ All everyday server utilities, profile lookup cards, interactive announcement em
 6. [`/userinfo`](#-userinfo) — Member profile, roles & permissions card
 7. [`/avatar`](#-avatar) — View & download PNG/JPG/WEBP avatars
 8. [`/roll`](#-roll) — Roll a dice (default 6 sides)
-9. [`/hello`](#-hello) — Friendly greeting
-10. [`!ping`](#-ping-prefix-command) — Check bot latency in milliseconds
-11. [`!sync`](#-sync-prefix-command) — Force-sync slash commands *(Admin)*
+9. [`/8ball`](#-8ball) — Ask the Magic 8-Ball a yes/no question
+10. [`/hello`](#-hello) — Friendly greeting
+11. [`!ping`](#-ping-prefix-command) — Check bot latency in milliseconds
+12. [`!sync`](#-sync-prefix-command) — Force-sync slash commands *(Admin)*
 
 ---
 
@@ -174,10 +175,26 @@ Shows a user's profile picture in high resolution (`1024px`) with direct clickab
 
 ---
 
-## 🎲 `/roll` & 👋 `/hello`
+## 🎲 `/roll` & 🎱 `/8ball` & 👋 `/hello`
 
 * **`/roll [sides:<number>]`**: Rolls a random number from `1` to `sides` (defaults to `6` sides; minimum `2`).
   * Output: `🎲 You rolled a 4 (1–6)`
+* **`/8ball question:<text>`**: Ask any yes/no question and get a classic Magic 8-Ball fortune card!
+  ```text
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🤖 RookieBot  [APP]  Today at 5:40 PM                        │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 🎱 Magic 8-Ball                                             │
+  │                                                             │
+  │ Question                                                    │
+  │ Will RookieBot hit 1,000 servers?                           │
+  │                                                             │
+  │ Answer                                                      │
+  │ Without a doubt! ✅                                         │
+  │                                                             │
+  │ Asked by Alex                                               │
+  └─────────────────────────────────────────────────────────────┘
+  ```
 * **`/hello`**: Sends a quick friendly welcome message from RookieBot.
   * Output: `Hey @Alex! I'm Rookie, your all-in-one server utility and community assistant. Type / to see my commands! 👋`
 

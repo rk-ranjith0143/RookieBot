@@ -41,7 +41,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
 | **[09. Leveling & Chat XP](09-Leveling-and-XP.md)** | Chat XP (15–25 XP/min), rank progress cards, top 10 & milestone roles | `/rank`, `/leaderboard`, `/levelrole add`, `/levelrole list`, `/levelrole remove` |
-| **[10. Virtual Economy & Shop](10-Economy-and-Shop.md)** | Wallets, daily coins, jobs, transfers, coinflip, item shop & inventory | `/balance`, `/daily`, `/work`, `/pay`, `/coinflip`, `/shop view`, `/shop add`, `/shop remove`, `/buy`, `/inventory` |
+| **[10. Virtual Economy & Shop](10-Economy-and-Shop.md)** | Wallets, richest leaderboard, daily coins, jobs, slots, rob, shop & admin eco | `/balance`, `/richest`, `/daily`, `/work`, `/pay`, `/coinflip`, `/slots`, `/rob`, `/eco give`, `/eco take`, `/shop view`, `/shop add`, `/shop remove`, `/buy`, `/inventory` |
 
 ### 💬 Section IV: Voice, Community & Automation
 | Guide | What's Inside | Commands Covered |
@@ -53,5 +53,5 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 ### 🧰 Section V: Utilities, Diagnostics & Monetization
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
-| **[14. Utilities, AFK, Reminders & Embeds](14-Utilities-AFK-Reminders-and-Embeds.md)** | Help directory, AFK status, timers, custom modal embeds, info & prefix cmds | `/help`, `/afk`, `/remindme`, `/embed`, `/serverinfo`, `/userinfo`, `/avatar`, `/roll`, `/hello`, `!ping`, `!sync` |
+| **[14. Utilities, AFK, Reminders & Embeds](14-Utilities-AFK-Reminders-and-Embeds.md)** | Help directory, AFK status, timers, custom modal embeds, 8-ball, info & prefix cmds | `/help`, `/afk`, `/remindme`, `/embed`, `/serverinfo`, `/userinfo`, `/avatar`, `/roll`, `/8ball`, `/hello`, `!ping`, `!sync` |
 | **[15. Premium & Licensing](15-Premium-and-Licensing.md)** | Subscription tiers, redeeming keys & admin license management | `/premium`, `/redeem`, `/license generate`, `/license list`, `/license revoke` |

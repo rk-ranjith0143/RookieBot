@@ -79,10 +79,13 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 
 ### 12. 🪙 Virtual Server Economy & Shop (`cogs/economy.py`)
 - `/balance [member]`: Inspect personal wallet or check another member's coin balance.
+- `/richest`: View the Top 10 wealthiest server members on the economy leaderboard.
 - `/daily`: Claim 200 free coins every 24 hours with strict cooldown enforcement.
 - `/work`: Work randomized career shifts (barista, coder, streamer, chef) to earn 50–150 coins (1-hour cooldown).
 - `/pay [member] [amount]`: Transfer coins securely between server members.
-- `/coinflip [bet] [choice]`: Double-or-nothing coin toss mini-game against the house.
+- `/coinflip [bet] [choice]` & `/slots [bet]`: Double-or-nothing coin flip and 3-reel slot machine (up to 10x jackpot).
+- `/rob [member]`: Attempt a risky heist with a 30-minute cooldown and caught fines.
+- `/eco give [member] [amount]` & `/eco take [member] [amount]`: Administrator wallet controls.
 - `/shop view`: Browse server shop items and role rewards with prices.
 - `/shop add [name] [price] [description] [role]`: Server administrators can list custom items or unlockable roles.
 - `/shop remove [item_id]`: Delete an item from the server shop.
@@ -125,6 +128,7 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/userinfo [member]`: User roles, permissions, account age, and join date.
 - `/avatar [user]`: High-resolution avatar viewer with format downloads.
 - `/roll [sides]`: Customizable dice roll.
+- `/8ball [question]`: Ask the Magic 8-Ball a yes/no question.
 - `/hello`: Bot greeting.
 - `!ping`: Latency check.
 - `!sync`: Admin force sync slash commands to current guild.
