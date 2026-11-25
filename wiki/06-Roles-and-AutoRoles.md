@@ -8,11 +8,12 @@ Let members pick their own notification/hobby roles with 1-click buttons, let mo
 ---
 
 ## 📑 Commands in This Guide
-1. [`/rolepanel`](#-rolepanel) — Create a persistent button panel for self-assignable roles
-2. [`/role`](#-role) — Manually add or remove a role from a member
-3. [`/autorole set`](#-autorole-set) — Auto-assign roles when new humans or bots join
-4. [`/autorole status`](#-autorole-status) — Check current join auto-role settings
-5. [`/autorole remove`](#-autorole-remove) — Turn off auto-roles
+1. [`/rolepanel`](#-rolepanel) — Create a persistent button panel for self-assignable roles (up to 5)
+2. [`/rolemenu`](#-rolemenu) — Create a persistent dropdown menu (up to 10 roles, optional Exclusive mode)
+3. [`/role`](#-role) — Manually add or remove a role from a member
+4. [`/autorole set`](#-autorole-set) — Auto-assign roles when new humans or bots join
+5. [`/autorole status`](#-autorole-status) — Check current join auto-role settings
+6. [`/autorole remove`](#-autorole-remove) — Turn off auto-roles
 
 ---
 
@@ -77,6 +78,47 @@ Builds an interactive role picker embed with up to **5 clickable role buttons**.
 * **`❌ You cannot include @everyone in a self-role panel.`** → Choose an actual custom role.
 * **`❌ BotRole is a bot-managed role and cannot be assigned manually.`** → Integrated roles (like a bot's own auto-created role or Server Booster role) cannot be given via buttons.
 * **`❌ VIP is higher than or equal to my highest role. Move my bot role above VIP in Server Settings > Roles.`** → Drag RookieBot above that role.
+
+---
+
+## 🎨 `/rolemenu`
+
+Creates a sleek **dropdown Select menu** supporting up to **10 roles** in one compact embed! Supports two modes:
+* **`exclusive: False` (Default — Multi-Select Toggle):** Members can pick multiple hobby/notification roles at once to add or remove them.
+* **`exclusive: True` (Single Choice — Exclusive Mode):** Ideal for **Color Roles**, **Pronouns**, or **Team Roles**—picking a new option automatically removes any other role from that menu!
+
+### 1. Parameters
+* **`title`** *(Required)*: Heading for the dropdown card (e.g., `Pick Your Name Color`).
+* **`role1`** *(Required)* + **`role2` to `role10`** *(Optional)*: Up to 10 self-assignable roles.
+* **`description`** *(Optional)*: Defaults to `Select a role from the dropdown menu below!`.
+* **`exclusive`** *(Optional)*: Choose `True` for single-choice switching or `False` for multi-select toggling.
+
+### 2. Exact What You See in Discord
+
+**A. Public Dropdown Role Menu Card:**
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 2:18 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🎨 Pick Your Name Color                                     │
+│ Select a role from the dropdown menu below!                 │
+│                                                             │
+│ Available Roles                                             │
+│ • @Red                                                      │
+│ • @Blue                                                     │
+│ • @Gold                                                     │
+│                                                             │
+│ Mode: Single Choice (Exclusive) • Select from the menu below│
+├─────────────────────────────────────────────────────────────┤
+│ [ ▼ Choose 1 role (Exclusive)...                        ]   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**B. What a member privately sees when switching an Exclusive role (`@Red` → `@Blue`):**
+```text
+🤖 RookieBot  [APP]  👁️ Only you can see this
+🎨 Updated! You now have @Blue (removed @Red).
+```
 
 ---
 

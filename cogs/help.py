@@ -142,6 +142,7 @@ class HelpCategorySelect(discord.ui.Select):
                 name="Roles Management",
                 value=(
                     "• `/rolepanel [title] [description] [roles...]` - Create button self-role panels.\n"
+                    "• `/rolemenu [title] [roles...] [exclusive]` - Dropdown role menus (up to 10 roles, optional exclusive mode).\n"
                     "• `/role [member] [role]` - Quickly assign or remove a role from a user.\n"
                     "• `/autorole set [member_role] [bot_role]` - Automatically assign roles upon joining.\n"
                     "• `/autorole status` - View current auto-role configuration."

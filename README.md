@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 106 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
+> View the complete text-based tutorials with exact Discord previews for all 107 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
@@ -46,6 +46,7 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 
 ### 7. 🎭 Interactive Self-Roles (`cogs/roles.py`)
 - `/rolepanel [title] [description] [roles...]`: Deploy persistent button self-role panels (up to 5 roles per view) that survive bot restarts.
+- `/rolemenu [title] [roles...] [exclusive]`: Deploy persistent dropdown role menus (up to 10 roles) with optional **Exclusive Mode** for color or team roles.
 - `/role [member] [role]`: Quick moderator command to toggle or assign/remove any role.
 
 ### 8. 🛡️ Auto-Moderation & Protection (`cogs/automod.py`)
@@ -252,7 +253,7 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 27 Cogs, 69 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 27 Cogs, 70 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
@@ -261,7 +262,7 @@ python test_bot.py -v
 
 All 70 test cases pass with a 100% success rate:
 - ✅ 27 Cogs discovery & extension loading
-- ✅ 69 Slash commands registered in command tree
+- ✅ 70 Slash commands registered in command tree
 - ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)

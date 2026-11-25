@@ -126,7 +126,7 @@ class Invites(commands.Cog):
             badge = medals[idx - 1] if idx <= 3 else f"`#{idx}`"
             lines.append(
                 f"{badge} **{display}** — **{row['total']} Invites** "
-                f"(`{row['regular']}` regular • `{row['leaves']}` left • `{row['bonus']}` bonus)"
+                f"(`{row['regular_count']}` regular • `{row['leaves_count']}` left • `{row['bonus_count']}` bonus)"
             )
 
         embed = discord.Embed(

@@ -1,5 +1,6 @@
 import re
-from typing import Optional
+import secrets
+from typing import List, Optional
 
 import discord
 from discord import app_commands, ui
@@ -49,7 +50,7 @@ class RoleButton(ui.DynamicItem[ui.Button], template=r"selfrole:role:(?P<role_id
         if not isinstance(member, discord.Member):
             member = guild.get_member(member.id)
 
-        if not guild.me.guild_permissions.manage_roles:
+        if not (guild.me.guild_permissions.manage_roles or guild.me.guild_permissions.administrator):
             await interaction.response.send_message("❌ I do not have `Manage Roles` permission to assign roles.", ephemeral=True)
             return
 
@@ -74,11 +75,168 @@ class RoleButton(ui.DynamicItem[ui.Button], template=r"selfrole:role:(?P<role_id
                 await interaction.response.send_message(f"❌ Failed to add role: `{e}`", ephemeral=True)
 
 
+class RoleMenuSelect(ui.DynamicItem[ui.Select], template=r"selfrolemenu:(?P<exclusive>[01]):(?P<menu_id>[a-zA-Z0-9]+)"):
+    """Persistent dropdown select menu supporting multi-toggle or exclusive single-choice roles."""
+
+    def __init__(
+        self,
+        options: List[discord.SelectOption],
+        exclusive: bool = False,
+        menu_id: Optional[str] = None,
+        select_item: Optional[ui.Select] = None,
+    ):
+        self.exclusive = exclusive
+        self.menu_id = menu_id or secrets.token_hex(4)
+
+        if select_item is not None:
+            super().__init__(select_item)
+        else:
+            max_vals = 1 if exclusive else max(1, len(options))
+            placeholder = "Choose 1 role (Exclusive)..." if exclusive else "Select role(s) to add or remove..."
+            super().__init__(
+                ui.Select(
+                    placeholder=placeholder,
+                    min_values=1,
+                    max_values=max_vals,
+                    options=options,
+                    custom_id=f"selfrolemenu:{1 if exclusive else 0}:{self.menu_id}",
+                )
+            )
+
+    @classmethod
+    async def from_custom_id(
+        cls,
+        interaction: discord.Interaction,
+        item: ui.Select,
+        match: re.Match[str],
+    ):
+        exclusive = match.group("exclusive") == "1"
+        menu_id = match.group("menu_id")
+        return cls(options=list(item.options), exclusive=exclusive, menu_id=menu_id, select_item=item)
+
+    async def callback(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        if not guild:
+            await interaction.response.send_message("❌ This action can only be performed inside a server.", ephemeral=True)
+            return
+
+        member = interaction.user
+        if not isinstance(member, discord.Member):
+            member = guild.get_member(member.id)
+
+        if not (guild.me.guild_permissions.manage_roles or guild.me.guild_permissions.administrator):
+            await interaction.response.send_message("❌ I do not have `Manage Roles` permission to assign roles.", ephemeral=True)
+            return
+
+        selected_ids = [int(v) for v in self.item.values if v.isdigit()]
+        menu_role_ids = [int(opt.value) for opt in self.item.options if opt.value.isdigit()]
+
+        if self.exclusive and selected_ids:
+            chosen_role = guild.get_role(selected_ids[0])
+            if not chosen_role:
+                await interaction.response.send_message("❌ That role no longer exists.", ephemeral=True)
+                return
+            if guild.me.top_role <= chosen_role:
+                await interaction.response.send_message(
+                    f"❌ I cannot assign {chosen_role.mention} because it is equal to or higher than my highest role.",
+                    ephemeral=True,
+                )
+                return
+
+            other_roles = [
+                r for r in member.roles
+                if r.id in menu_role_ids and r.id != chosen_role.id and guild.me.top_role > r
+            ]
+            try:
+                if chosen_role in member.roles and not other_roles:
+                    await member.remove_roles(chosen_role, reason="Exclusive self-role dropdown toggle")
+                    await interaction.response.send_message(f"➖ Removed {chosen_role.mention} from your roles.", ephemeral=True)
+                else:
+                    if other_roles:
+                        await member.remove_roles(*other_roles, reason="Exclusive self-role dropdown switch")
+                    if chosen_role not in member.roles:
+                        await member.add_roles(chosen_role, reason="Exclusive self-role dropdown selection")
+                    swapped = f" (removed {', '.join(r.mention for r in other_roles)})" if other_roles else ""
+                    await interaction.response.send_message(
+                        f"🎨 Updated! You now have {chosen_role.mention}{swapped}.",
+                        ephemeral=True,
+                    )
+            except discord.HTTPException as e:
+                await interaction.response.send_message(f"❌ Failed to update roles: `{e}`", ephemeral=True)
+            return
+
+        # Multi-select toggle mode
+        added: List[discord.Role] = []
+        removed: List[discord.Role] = []
+        skipped: List[str] = []
+
+        for rid in selected_ids:
+            role = guild.get_role(rid)
+            if not role:
+                continue
+            if guild.me.top_role <= role:
+                skipped.append(role.name)
+                continue
+            if role in member.roles:
+                removed.append(role)
+            else:
+                added.append(role)
+
+        try:
+            if added:
+                await member.add_roles(*added, reason="Self-role dropdown toggle (added)")
+            if removed:
+                await member.remove_roles(*removed, reason="Self-role dropdown toggle (removed)")
+        except discord.HTTPException as e:
+            await interaction.response.send_message(f"❌ Failed to update roles: `{e}`", ephemeral=True)
+            return
+
+        parts = []
+        if added:
+            parts.append(f"➕ **Added:** {', '.join(r.mention for r in added)}")
+        if removed:
+            parts.append(f"➖ **Removed:** {', '.join(r.mention for r in removed)}")
+        if skipped:
+            parts.append(f"⚠️ **Skipped (hierarchy):** {', '.join(skipped)}")
+
+        await interaction.response.send_message("\n".join(parts) or "ℹ️ No roles changed.", ephemeral=True)
+
+
 class Roles(commands.Cog):
-    """Self-assignable role panels and role administration."""
+    """Self-assignable role panels, dropdown menus, and role administration."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    async def _validate_self_roles(
+        self,
+        interaction: discord.Interaction,
+        raw_roles: List[Optional[discord.Role]],
+    ) -> Optional[List[discord.Role]]:
+        """Deduplicate and verify self-assignable roles against bot permissions & hierarchy."""
+        guild = interaction.guild
+        seen_ids = set()
+        cleaned_roles: List[discord.Role] = []
+
+        for r in raw_roles:
+            if r is None or r.id in seen_ids:
+                continue
+            seen_ids.add(r.id)
+            if r.is_default():
+                await interaction.response.send_message("❌ You cannot include `@everyone` in a self-role panel.", ephemeral=True)
+                return None
+            if r.managed:
+                await interaction.response.send_message(f"❌ `{r.name}` is a bot-managed role and cannot be assigned manually.", ephemeral=True)
+                return None
+            if guild.me.top_role <= r:
+                await interaction.response.send_message(
+                    f"❌ `{r.name}` is higher than or equal to my highest role. Move my bot role above `{r.name}` in Server Settings > Roles.",
+                    ephemeral=True,
+                )
+                return None
+            cleaned_roles.append(r)
+
+        return cleaned_roles
 
     @app_commands.command(name="rolepanel", description="Create a persistent interactive self-role panel with buttons")
     @app_commands.describe(
@@ -103,29 +261,9 @@ class Roles(commands.Cog):
         role4: Optional[discord.Role] = None,
         role5: Optional[discord.Role] = None,
     ):
-        guild = interaction.guild
-        raw_roles = [role1, role2, role3, role4, role5]
-        roles = [r for r in raw_roles if r is not None]
-
-        seen_ids = set()
-        cleaned_roles = []
-        for r in roles:
-            if r.id in seen_ids:
-                continue
-            seen_ids.add(r.id)
-            if r.is_default():
-                await interaction.response.send_message("❌ You cannot include `@everyone` in a self-role panel.", ephemeral=True)
-                return
-            if r.managed:
-                await interaction.response.send_message(f"❌ `{r.name}` is a bot-managed role and cannot be assigned manually.", ephemeral=True)
-                return
-            if guild.me.top_role <= r:
-                await interaction.response.send_message(
-                    f"❌ `{r.name}` is higher than or equal to my highest role. Move my bot role above `{r.name}` in Server Settings > Roles.",
-                    ephemeral=True,
-                )
-                return
-            cleaned_roles.append(r)
+        cleaned_roles = await self._validate_self_roles(interaction, [role1, role2, role3, role4, role5])
+        if cleaned_roles is None:
+            return
 
         view = ui.View(timeout=None)
         button_styles = [
@@ -152,6 +290,74 @@ class Roles(commands.Cog):
 
         await interaction.channel.send(embed=embed, view=view)
         await interaction.response.send_message("✅ Self-role panel created successfully!", ephemeral=True)
+
+    @app_commands.command(name="rolemenu", description="Create a persistent dropdown role menu (up to 10 roles, optional exclusive mode)")
+    @app_commands.describe(
+        title="Title of the dropdown role menu",
+        role1="First role option",
+        description="Instructions shown on the role menu card",
+        exclusive="If True, picking 1 role removes the others (ideal for color or team roles)",
+        role2="Second role option (optional)",
+        role3="Third role option (optional)",
+        role4="Fourth role option (optional)",
+        role5="Fifth role option (optional)",
+        role6="Sixth role option (optional)",
+        role7="Seventh role option (optional)",
+        role8="Eighth role option (optional)",
+        role9="Ninth role option (optional)",
+        role10="Tenth role option (optional)",
+    )
+    @app_commands.checks.has_permissions(manage_roles=True)
+    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    async def rolemenu(
+        self,
+        interaction: discord.Interaction,
+        title: str,
+        role1: discord.Role,
+        description: Optional[str] = "Select a role from the dropdown menu below!",
+        exclusive: bool = False,
+        role2: Optional[discord.Role] = None,
+        role3: Optional[discord.Role] = None,
+        role4: Optional[discord.Role] = None,
+        role5: Optional[discord.Role] = None,
+        role6: Optional[discord.Role] = None,
+        role7: Optional[discord.Role] = None,
+        role8: Optional[discord.Role] = None,
+        role9: Optional[discord.Role] = None,
+        role10: Optional[discord.Role] = None,
+    ):
+        cleaned_roles = await self._validate_self_roles(
+            interaction,
+            [role1, role2, role3, role4, role5, role6, role7, role8, role9, role10],
+        )
+        if cleaned_roles is None:
+            return
+
+        options = [
+            discord.SelectOption(
+                label=r.name[:100],
+                value=str(r.id),
+                emoji="🎨" if exclusive else "🏷️",
+            )
+            for r in cleaned_roles
+        ]
+
+        view = ui.View(timeout=None)
+        view.add_item(RoleMenuSelect(options=options, exclusive=exclusive))
+
+        mode_text = "Single Choice (Exclusive)" if exclusive else "Multi-Select Toggle"
+        embed = discord.Embed(
+            title=f"🎨 {title}" if exclusive else f"🎭 {title}",
+            description=description,
+            color=discord.Color.purple() if exclusive else discord.Color.blue(),
+            timestamp=discord.utils.utcnow(),
+        )
+        role_list = "\n".join(f"• {r.mention}" for r in cleaned_roles)
+        embed.add_field(name="Available Roles", value=role_list, inline=False)
+        embed.set_footer(text=f"Mode: {mode_text} • Select from the menu below")
+
+        await interaction.channel.send(embed=embed, view=view)
+        await interaction.response.send_message("✅ Dropdown role menu created successfully!", ephemeral=True)
 
     @app_commands.command(name="role", description="Give or remove a role from a member")
     @app_commands.describe(
@@ -207,5 +413,5 @@ class Roles(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    bot.add_dynamic_items(RoleButton)
+    bot.add_dynamic_items(RoleButton, RoleMenuSelect)
     await bot.add_cog(Roles(bot))

@@ -23,7 +23,7 @@ import database
 from cogs.embeds import parse_color
 from cogs.leveling import render_progress_bar
 from cogs.automod import INVITE_REGEX, find_blacklisted_word
-from cogs.roles import RoleButton
+from cogs.roles import RoleButton, RoleMenuSelect
 from cogs.tickets import (
     TicketLaunchView,
     CloseTicketView,
@@ -107,8 +107,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_69_slash_commands_registered(self):
-        """Verify all 69 application commands are present in the command tree."""
+    def test_all_70_slash_commands_registered(self):
+        """Verify all 70 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -149,6 +149,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "richest",
             "rob",
             "role",
+            "rolemenu",
             "rolepanel",
             "roll",
             "serverinfo",
@@ -936,6 +937,13 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         role_btn = RoleButton(role_id=12345, label="Member")
         self.assertTrue(role_btn.custom_id.startswith("selfrole:role:12345"))
 
+        role_menu = RoleMenuSelect(
+            options=[discord.SelectOption(label="Red", value="111")],
+            exclusive=True,
+            menu_id="abc123",
+        )
+        self.assertEqual(role_menu.custom_id, "selfrolemenu:1:abc123")
+
         sug_view = SuggestionVoteView()
         self.assertEqual(sug_view.children[0].custom_id, "suggestion_btn_upvote")
         self.assertEqual(sug_view.children[1].custom_id, "suggestion_btn_downvote")
@@ -1262,7 +1270,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await am.word_remove.callback(am, interaction, word="badword")
 
         # Simulate rapid join burst triggering Anti-Raid timeout
-        guild.me.guild_permissions = discord.Permissions(administrator=True, moderate_members=True)
+        guild.me.guild_permissions = discord.Permissions.all()
         guild.me.top_role.__gt__ = MagicMock(return_value=True)
         user.timeout = AsyncMock()
         for _ in range(5):
@@ -1454,6 +1462,39 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await bday_cog.birthday_upcoming.callback(bday_cog, interaction)
         await bday_cog.birthday_disable.callback(bday_cog, interaction)
         await bday_cog.birthday_remove.callback(bday_cog, interaction)
+
+        # -------------------------------------------------------------
+        # Roles Cog & Dropdown Role Menu Commands
+        # -------------------------------------------------------------
+        roles_cog = self.bot.get_cog("Roles")
+        mock_role.is_default = MagicMock(return_value=False)
+        mock_role.managed = False
+        mock_role2 = MagicMock(spec=discord.Role)
+        mock_role2.id = 555667
+        mock_role2.name = "Blue"
+        mock_role2.mention = "@Blue"
+        mock_role2.is_default = MagicMock(return_value=False)
+        mock_role2.managed = False
+
+        await roles_cog.rolepanel.callback(roles_cog, interaction, title="Roles", role1=mock_role)
+        await roles_cog.rolemenu.callback(roles_cog, interaction, title="Colors", role1=mock_role, role2=mock_role2, exclusive=True)
+
+        # Simulate exclusive dropdown selection swapping mock_role -> mock_role2
+        user.roles = [mock_role]
+        user.remove_roles = AsyncMock()
+        guild.get_role = MagicMock(side_effect=lambda rid: mock_role2 if rid == mock_role2.id else mock_role)
+        select_item = discord.ui.Select(
+            custom_id="selfrolemenu:1:test1",
+            options=[
+                discord.SelectOption(label="MockRole", value=str(mock_role.id)),
+                discord.SelectOption(label="Blue", value=str(mock_role2.id)),
+            ],
+        )
+        select_item._values = [str(mock_role2.id)]
+        menu_dyn = RoleMenuSelect(options=list(select_item.options), exclusive=True, menu_id="test1", select_item=select_item)
+        await menu_dyn.callback(interaction)
+        user.remove_roles.assert_called()
+        user.add_roles.assert_called()
 
         # -------------------------------------------------------------
         # Invites Cog Commands & Join/Leave Listeners
