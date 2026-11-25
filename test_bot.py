@@ -6,7 +6,6 @@ Auto-Mod Regex, UI Modals/Buttons/Views, Gamification, and Monetization.
 
 import os
 import sys
-import asyncio
 import datetime
 import tempfile
 import unittest
@@ -14,7 +13,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 from discord import app_commands
-from discord.ext import commands
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -31,12 +29,12 @@ from cogs.tickets import (
     generate_ticket_transcript,
 )
 from cogs.suggestions import SuggestionVoteView
-from cogs.premium import PremiumUpgradeView, RedeemKeyModal
+from cogs.premium import PremiumUpgradeView
 from cogs.verification import VerifyLaunchView
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
 from cogs.birthdays import is_valid_birthday, days_until_birthday
-from bot import RookieBot, UtilityBot
+from bot import RookieBot
 
 
 class TestRookieBot(unittest.IsolatedAsyncioTestCase):

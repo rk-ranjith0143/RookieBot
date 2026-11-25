@@ -46,25 +46,21 @@ def init_db_sync():
         )
 
         # Safe schema column migrations for existing databases
-        migrations = (
-            "mod_log_channel_id",
-            "ticket_category_id",
-            "ticket_support_role_id",
-            "ticket_transcript_channel_id",
-            "leave_channel_id",
-            "welcome_message",
-            "leave_message",
-            "suggestion_channel_id",
+        migration_queries = (
+            "ALTER TABLE guild_settings ADD COLUMN mod_log_channel_id INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN ticket_category_id INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN ticket_support_role_id INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN ticket_transcript_channel_id INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN leave_channel_id INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN welcome_message INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN leave_message INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN suggestion_channel_id INTEGER DEFAULT NULL",
+            "ALTER TABLE guild_settings ADD COLUMN anti_word_filter INTEGER DEFAULT 1",
+            "ALTER TABLE guild_settings ADD COLUMN anti_raid INTEGER DEFAULT 1",
         )
-        for col in migrations:
+        for stmt in migration_queries:
             try:
-                conn.execute(f"ALTER TABLE guild_settings ADD COLUMN {col} INTEGER DEFAULT NULL")
-            except sqlite3.OperationalError:
-                pass
-
-        for flag_col in ("anti_word_filter", "anti_raid"):
-            try:
-                conn.execute(f"ALTER TABLE guild_settings ADD COLUMN {flag_col} INTEGER DEFAULT 1")
+                conn.execute(stmt)
             except sqlite3.OperationalError:
                 pass
 
@@ -454,31 +450,34 @@ async def get_guild_settings(guild_id: int) -> Dict[str, Any]:
     return await asyncio.to_thread(_get_guild_settings_sync, guild_id)
 
 
+_GUILD_SETTING_UPDATE_QUERIES = {
+    "is_premium": "UPDATE guild_settings SET is_premium = ? WHERE guild_id = ?",
+    "premium_expires_at": "UPDATE guild_settings SET premium_expires_at = ? WHERE guild_id = ?",
+    "anti_invite": "UPDATE guild_settings SET anti_invite = ? WHERE guild_id = ?",
+    "anti_spam": "UPDATE guild_settings SET anti_spam = ? WHERE guild_id = ?",
+    "anti_mass_mention": "UPDATE guild_settings SET anti_mass_mention = ? WHERE guild_id = ?",
+    "anti_word_filter": "UPDATE guild_settings SET anti_word_filter = ? WHERE guild_id = ?",
+    "anti_raid": "UPDATE guild_settings SET anti_raid = ? WHERE guild_id = ?",
+    "welcome_channel_id": "UPDATE guild_settings SET welcome_channel_id = ? WHERE guild_id = ?",
+    "leave_channel_id": "UPDATE guild_settings SET leave_channel_id = ? WHERE guild_id = ?",
+    "welcome_message": "UPDATE guild_settings SET welcome_message = ? WHERE guild_id = ?",
+    "leave_message": "UPDATE guild_settings SET leave_message = ? WHERE guild_id = ?",
+    "mod_log_channel_id": "UPDATE guild_settings SET mod_log_channel_id = ? WHERE guild_id = ?",
+    "ticket_category_id": "UPDATE guild_settings SET ticket_category_id = ? WHERE guild_id = ?",
+    "ticket_support_role_id": "UPDATE guild_settings SET ticket_support_role_id = ? WHERE guild_id = ?",
+    "ticket_transcript_channel_id": "UPDATE guild_settings SET ticket_transcript_channel_id = ? WHERE guild_id = ?",
+    "suggestion_channel_id": "UPDATE guild_settings SET suggestion_channel_id = ? WHERE guild_id = ?",
+}
+
+
 def _update_guild_setting_sync(guild_id: int, key: str, value: Any):
-    allowed_keys = {
-        "is_premium",
-        "premium_expires_at",
-        "anti_invite",
-        "anti_spam",
-        "anti_mass_mention",
-        "anti_word_filter",
-        "anti_raid",
-        "welcome_channel_id",
-        "leave_channel_id",
-        "welcome_message",
-        "leave_message",
-        "mod_log_channel_id",
-        "ticket_category_id",
-        "ticket_support_role_id",
-        "ticket_transcript_channel_id",
-        "suggestion_channel_id",
-    }
-    if key not in allowed_keys:
+    query = _GUILD_SETTING_UPDATE_QUERIES.get(key)
+    if not query:
         raise ValueError(f"Invalid setting key: {key}")
 
     with _get_connection() as conn:
         _get_guild_settings_sync(guild_id)
-        conn.execute(f"UPDATE guild_settings SET {key} = ? WHERE guild_id = ?", (value, guild_id))
+        conn.execute(query, (value, guild_id))
         conn.commit()
 
 

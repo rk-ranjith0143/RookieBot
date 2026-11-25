@@ -1,7 +1,6 @@
 import os
-import time
 import datetime
-from typing import Optional, List
+from typing import Optional
 
 import discord
 from discord import app_commands

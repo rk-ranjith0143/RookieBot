@@ -1,6 +1,5 @@
 import re
-import time
-from typing import Optional
+import time as time_mod
 
 import discord
 from discord import app_commands
@@ -38,7 +37,7 @@ class Reminders(commands.Cog):
     @tasks.loop(seconds=5.0)
     async def reminder_loop(self):
         """Poll the database for reminders that are due and send them."""
-        now = time.time()
+        now = time_mod.time()
         due_items = await get_due_reminders(now)
 
         for item in due_items:
@@ -91,8 +90,7 @@ class Reminders(commands.Cog):
             )
             return
 
-        remind_at = time_module_time = time_val = time_time = time_stamp = import_time = time_time_val = None
-        remind_at = time_time_val = import_time = float(time_stamp := __import__("time").time() + duration_sec)
+        remind_at = time_mod.time() + duration_sec
 
         channel_id = getattr(interaction, "channel_id", None) or (interaction.channel.id if interaction.channel else None)
         if hasattr(channel_id, "__class__") and not isinstance(channel_id, int):

@@ -11,7 +11,6 @@ from database import (
     claim_daily,
     add_shop_item,
     get_shop_items,
-    get_shop_item,
     delete_shop_item,
     buy_shop_item,
     get_user_inventory,

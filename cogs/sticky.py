@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional, Dict
+from typing import Dict
 
 import discord
 from discord import app_commands
