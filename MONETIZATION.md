@@ -8,8 +8,8 @@ This guide details the complete monetization infrastructure implemented in Rooki
 
 | Monetization Model | Target Audience | Price Point | Platform Cut | Implementation Method |
 | :--- | :--- | :--- | :--- | :--- |
-| **Discord Native In-App Subscriptions** | Casual Server Owners | $2.99 – $4.99 / mo | 15% (Discord) | Discord Developer Portal Monetization + `interaction.entitlements` |
-| **Stripe / LemonSqueezy License Keys** | Power Users, Web Buyers | $4.99 / mo, $39.99 / yr, $99 Lifetime | ~3% (Stripe/Card) | License key generation (`/license generate`) + `/redeem` |
+| **Discord Native In-App Subscriptions** | All Server Users & Owners | **$1 / mo** *(Current Launch Price)* | 15% (Discord) | Discord Developer Portal Monetization + `interaction.entitlements` |
+| **Stripe / LemonSqueezy License Keys** | Power Users, Web Buyers | **$1 / mo** *(Current Launch Price)*, $10 / yr | ~3% (Stripe/Card) | License key generation (`/license generate`) + `/redeem` |
 | **B2B Community Management Retainers** | Crypto, Gaming, Companies | $50 – $250 / mo | 0% (Direct Wire/Invoice) | White-label bot hosting, priority support & custom features |
 
 ---
@@ -18,7 +18,7 @@ This guide details the complete monetization infrastructure implemented in Rooki
 
 The bot enforces hard limits on free servers, creating a natural incentive to upgrade:
 
-| Capability | Free Tier 🆓 | ⭐ Premium Tier ($4.99/mo) | Why Users Upgrade |
+| Capability | Free Tier 🆓 | ⭐ Premium Tier ($1/mo) | Why Users Upgrade |
 | :--- | :---: | :---: | :--- |
 | **Custom Tags & Auto-FAQ (`/tag`)** | Up to 5 Tags | **Unlimited** | Busy servers need dozens of FAQs for rules, links, and guides |
 | **Sticky Notices (`/sticky`)** | 1 Channel Notice | **Unlimited Channels** | Communities want persistent notices in multiple chat channels |
@@ -47,7 +47,7 @@ If a server owner purchases a subscription through Discord, the bot detects it i
 3. Complete the onboarding wizard (requires team account, payout bank details, and tax verification).
 4. Create a **Subscription SKU**:
    - **Name:** *Server Premium (Monthly)*
-   - **Price:** `$4.99 / month`
+   - **Price:** `$1.00 / month` *(Current Launch Offer — configurable via `PREMIUM_PRICE_LABEL`)*
    - **Description:** Unlocks unlimited custom tags, multi-channel sticky messages, and full live statistics channels.
 5. Publish the SKU. Users can now subscribe via the Discord App Directory!
 
@@ -59,7 +59,7 @@ For users who want to pay via Credit Card, PayPal, Crypto, or annual plans, the 
 
 ### How it Works:
 1. **Customer Purchases on Stripe / Gumroad / Ko-fi**:
-   - You set up a simple **Stripe Payment Link** or **Gumroad product** ($4.99/mo, $39.99/yr, or $99 Lifetime).
+   - You set up a simple **Stripe Payment Link** or **Gumroad product** ($1/mo current launch price or $10/yr).
 2. **Generate a License Key**:
    - Run the administrator-only slash command:
      ```text
@@ -104,7 +104,7 @@ Offer a "Turnkey Community Infrastructure" package for **$99/month**:
 | Slash Command | Permission | Description |
 | :--- | :---: | :--- |
 | `/premium` | Everyone | View current subscription status, active perks, and checkout links |
-| `/redeem [key]` | `Manage Server` | Redeem a purchased license key to upgrade the guild |
+| `/redeem [key]` | Everyone | Redeem a purchased license key to upgrade any guild |
 | `/license generate [days] [note]` | Bot Owner | Generate a new license key (`PREM-XXXX-XXXX-XXXX`) |
 | `/license list` | Bot Owner | Inspect all active and unredeemed license keys in SQLite |
 | `/license revoke [guild_id]` | Bot Owner | Instantly downgrade a server and remove Premium status |

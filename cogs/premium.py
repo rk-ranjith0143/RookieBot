@@ -8,9 +8,10 @@ from discord.ext import commands, tasks
 
 import database
 
-# Configurable Checkout / Payment store URL
+# Configurable Checkout / Payment store URL & pricing label
 DEFAULT_STORE_URL = "https://discord.com/application-directory"
 STORE_URL = os.getenv("PREMIUM_STORE_URL", DEFAULT_STORE_URL)
+PREMIUM_PRICE_LABEL = os.getenv("PREMIUM_PRICE_LABEL", "$1/mo")
 
 
 class RedeemKeyModal(discord.ui.Modal, title="Redeem Premium License Key"):
@@ -152,7 +153,7 @@ class Premium(commands.Cog):
                 title="💎 Server Subscription: Free Tier",
                 description=(
                     f"**{guild.name}** is currently on the **Free Tier**.\n"
-                    f"Upgrade to unlock unlimited tags, unlimited sticky notices, all live stats channels, and priority uptime!"
+                    f"Upgrade for just **{PREMIUM_PRICE_LABEL}** *(available for all servers)* to unlock unlimited tags, unlimited sticky notices, all live stats channels, and priority uptime!"
                 ),
                 color=0x5865F2,
                 timestamp=discord.utils.utcnow(),
@@ -171,7 +172,7 @@ class Premium(commands.Cog):
         )
 
         embed.add_field(
-            name="⭐ Premium Perks ($4.99/mo or $39.99/yr)",
+            name=f"⭐ Premium Perks ({PREMIUM_PRICE_LABEL})",
             value=(
                 "• **Unlimited Custom Tags & Auto-FAQs**\n"
                 "• **Unlimited Sticky Notices** across multiple channels\n"
@@ -187,10 +188,9 @@ class Premium(commands.Cog):
 
     @app_commands.command(
         name="redeem",
-        description="Redeem a Premium License Key for this server",
+        description="Redeem a Premium License Key to upgrade this server",
     )
     @app_commands.describe(key="Your license key in format PREM-XXXX-XXXX-XXXX")
-    @app_commands.default_permissions(manage_guild=True)
     async def redeem_command(self, interaction: discord.Interaction, key: str):
         if not interaction.guild:
             await interaction.response.send_message("❌ This command must be used in a server.", ephemeral=True)

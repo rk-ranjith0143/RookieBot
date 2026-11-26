@@ -208,7 +208,7 @@ class HelpCategorySelect(discord.ui.Select):
         elif category == "premium":
             embed = discord.Embed(
                 title="💎 RookieBot Premium & Monetization",
-                description="Unlock unlimited limits and priority cloud infrastructure.",
+                description="Unlock unlimited limits and priority cloud infrastructure — currently **$1/mo** for all users!",
                 color=0xFFD700,
             )
             embed.add_field(

@@ -1298,6 +1298,9 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         # -------------------------------------------------------------
         prem_cog = self.bot.get_cog("Premium")
         await prem_cog.premium.callback(prem_cog, interaction)
+        prem_embed = interaction.response.send_message.call_args.kwargs.get("embed")
+        self.assertIsNotNone(prem_embed)
+        self.assertTrue(any("$1/mo" in f.name for f in prem_embed.fields))
         await prem_cog.redeem_command.callback(prem_cog, interaction, key="PREM-ABCD-1234-5678")
         await prem_cog.license_generate.callback(prem_cog, interaction, duration_days=30, note="Customer A")
         await prem_cog.license_list.callback(prem_cog, interaction)

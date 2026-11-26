@@ -33,8 +33,9 @@ Displays whether your server is on the **Free Tier** or **⭐ Premium Server**, 
 ├─────────────────────────────────────────────────────────────┤
 │ 💎 Server Subscription: Free Tier                           │
 │ My Community Server is currently on the Free Tier.          │
-│ Upgrade to unlock unlimited tags, unlimited sticky notices, │
-│ all live stats channels, and priority uptime!               │
+│ Upgrade for just $1/mo (available for all servers) to       │
+│ unlock unlimited tags, unlimited sticky notices, all live   │
+│ stats channels, and priority uptime!                        │
 │                                                             │
 │ 🆓 Free Tier Limits                                         │
 │ • All standard Moderation tools (/kick, /ban, /timeout...)  │
@@ -43,7 +44,7 @@ Displays whether your server is on the **Free Tier** or **⭐ Premium Server**, 
 │ • 1 Live Stats Channel (👥 Total Members)                   │
 │ • Community Suggestions, Polls & Giveaways                  │
 │                                                             │
-│ ⭐ Premium Perks ($4.99/mo or $39.99/yr)                    │
+│ ⭐ Premium Perks ($1/mo)                                    │
 │ • Unlimited Custom Tags & Auto-FAQs                         │
 │ • Unlimited Sticky Notices across multiple channels         │
 │ • Full Live Stats Suite (Total, Humans, Bots, Boosts)       │
@@ -77,7 +78,7 @@ Activates a Premium license key on the current server without opening the modal.
 | Property | Value |
 | :--- | :--- |
 | **Command Syntax** | `/redeem key:<PREM-XXXX-XXXX-XXXX>` |
-| **Who Can Use It** | Members with **Manage Server** (`Manage Guild`) permission |
+| **Who Can Use It** | `@everyone` *(Any server member with a valid key)* |
 | **Response Visibility** | Public Gold Embed (or Ephemeral error if invalid/used) |
 
 ### 2. Exact What You See in Discord
