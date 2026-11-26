@@ -34,7 +34,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | :--- | :--- | :--- |
 | **[05. Support Tickets](05-Support-Tickets.md)** | Private support ticket channels with `📩 Open Ticket`, `✋ Claim Ticket` & transcripts | `/ticketsetup` |
 | **[18. Staff Applications](18-Staff-Applications.md)** | Custom 5-question modal forms & `✅ Accept` / `❌ Deny` review cards | `/apply setup`, `/apply status`, `/apply disable` |
-| **[06. Roles & Auto-Roles](06-Roles-and-AutoRoles.md)** | Button self-role menus, dropdown role menus, manual toggling, temp roles & auto join roles | `/rolepanel`, `/rolemenu`, `/role`, `/temprole`, `/autorole set`, `/autorole status`, `/autorole remove` |
+| **[06. Roles & Auto-Roles](06-Roles-and-AutoRoles.md)** | Button panels, dropdown menus, emoji reaction roles, manual toggling, temp roles & auto join roles | `/rolepanel`, `/rolemenu`, `/reactionrole add`, `/reactionrole remove`, `/reactionrole list`, `/role`, `/temprole`, `/autorole set`, `/autorole status`, `/autorole remove` |
 | **[07. Welcome, Leave & Audit Logs](07-Welcome-Leave-and-Audit-Logs.md)** | Join/leave cards with placeholders & 10 automatic audit log events | `/setwelcome`, `/setleave`, `/setlogs` |
 | **[08. Server Stats Counters](08-Server-Stats-Counters.md)** | Live locked voice channels displaying Total, Humans & Bots | `/serverstats setup`, `/serverstats refresh`, `/serverstats remove` |
 

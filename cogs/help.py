@@ -143,6 +143,7 @@ class HelpCategorySelect(discord.ui.Select):
                 value=(
                     "• `/rolepanel [title] [description] [roles...]` - Create button self-role panels.\n"
                     "• `/rolemenu [title] [roles...] [exclusive]` - Dropdown role menus (up to 10 roles, optional exclusive mode).\n"
+                    "• `/reactionrole add / remove / list` - Bind emoji reactions on messages to auto-assign roles.\n"
                     "• `/role [member] [role]` - Quickly assign or remove a role from a user.\n"
                     "• `/temprole [member] [role] [duration]` - Assign a temporary role that auto-expires.\n"
                     "• `/autorole set [member_role] [bot_role]` - Automatically assign roles upon joining.\n"

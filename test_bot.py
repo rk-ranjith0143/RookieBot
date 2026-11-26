@@ -107,8 +107,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_73_slash_commands_registered(self):
-        """Verify all 73 application commands are present in the command tree."""
+    def test_all_74_slash_commands_registered(self):
+        """Verify all 74 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -145,6 +145,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "poll",
             "premium",
             "rank",
+            "reactionrole",
             "redeem",
             "remindme",
             "richest",
@@ -932,6 +933,25 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await database.delete_timed_action(tr_id))
         self.assertEqual(len(await database.get_due_timed_actions(pytime.time())), 0)
 
+    async def test_reaction_roles_database_operations(self):
+        """Verify adding, querying, listing, and removing reaction role bindings."""
+        guild_id = 616162
+        channel_id = 717172
+        message_id = 818182
+
+        await database.add_reaction_role(guild_id, channel_id, message_id, "🎮", 9001)
+        binding = await database.get_reaction_role(message_id, "🎮")
+        self.assertIsNotNone(binding)
+        self.assertEqual(binding["role_id"], 9001)
+
+        all_bindings = await database.get_reaction_roles_by_guild(guild_id)
+        self.assertEqual(len(all_bindings), 1)
+        self.assertEqual(all_bindings[0]["emoji"], "🎮")
+
+        removed = await database.remove_reaction_role(guild_id, message_id, "🎮")
+        self.assertTrue(removed)
+        self.assertIsNone(await database.get_reaction_role(message_id, "🎮"))
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -1579,6 +1599,46 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await menu_dyn.callback(interaction)
         user.remove_roles.assert_called()
         user.add_roles.assert_called()
+
+        # Classic Emoji Reaction Roles flow
+        mock_msg.add_reaction = AsyncMock()
+        mock_msg.jump_url = "https://discord.com/channels/12345/67890/999999"
+        channel.fetch_message = AsyncMock(return_value=mock_msg)
+        await roles_cog.reactionrole_add.callback(
+            roles_cog, interaction, message_id=str(mock_msg.id), emoji="🎮", role=mock_role2, channel=channel
+        )
+        await roles_cog.reactionrole_list.callback(roles_cog, interaction)
+
+        add_payload = MagicMock(spec=discord.RawReactionActionEvent)
+        add_payload.guild_id = guild.id
+        add_payload.message_id = mock_msg.id
+        add_payload.user_id = user.id
+        add_payload.emoji = discord.PartialEmoji.from_str("🎮")
+        add_payload.member = user
+        user.roles = []
+        user.add_roles.reset_mock()
+        orig_get_guild = self.bot.get_guild
+        self.bot.get_guild = MagicMock(return_value=guild)
+        try:
+            await roles_cog.on_raw_reaction_add(add_payload)
+            user.add_roles.assert_called_with(mock_role2, reason="Reaction role added (🎮)")
+
+            rem_payload = MagicMock(spec=discord.RawReactionActionEvent)
+            rem_payload.guild_id = guild.id
+            rem_payload.message_id = mock_msg.id
+            rem_payload.user_id = user.id
+            rem_payload.emoji = discord.PartialEmoji.from_str("🎮")
+            guild.get_member = MagicMock(return_value=user)
+            user.roles = [mock_role2]
+            user.remove_roles.reset_mock()
+            await roles_cog.on_raw_reaction_remove(rem_payload)
+            user.remove_roles.assert_called_with(mock_role2, reason="Reaction role removed (🎮)")
+        finally:
+            self.bot.get_guild = orig_get_guild
+
+        await roles_cog.reactionrole_remove.callback(
+            roles_cog, interaction, message_id=str(mock_msg.id), emoji="🎮"
+        )
 
         # -------------------------------------------------------------
         # Invites Cog Commands & Join/Leave Listeners

@@ -207,7 +207,13 @@ class RoleMenuSelect(ui.DynamicItem[ui.Select], template=r"selfrolemenu:(?P<excl
 
 
 class Roles(commands.Cog):
-    """Self-assignable role panels, dropdown menus, and role administration."""
+    """Self-assignable role panels, dropdown menus, reaction roles, and role administration."""
+
+    reactionrole_group = app_commands.Group(
+        name="reactionrole",
+        description="Bind classic emoji reactions on messages to auto-assign roles",
+        guild_only=True,
+    )
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -506,6 +512,175 @@ class Roles(commands.Cog):
         embed.add_field(name="Moderator", value=interaction.user.mention, inline=True)
         embed.add_field(name="Reason", value=reason, inline=False)
         await interaction.response.send_message(embed=embed)
+
+    async def _handle_reaction_role(self, payload: discord.RawReactionActionEvent, add: bool):
+        """Grant or remove a bound reaction role cleanly while enforcing bot hierarchy."""
+        if not payload.guild_id:
+            return
+        if self.bot.user and payload.user_id == self.bot.user.id:
+            return
+
+        emoji_key = str(payload.emoji)
+        binding = await database.get_reaction_role(payload.message_id, emoji_key)
+        if not binding:
+            return
+
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild or not guild.me:
+            return
+        if not (guild.me.guild_permissions.manage_roles or guild.me.guild_permissions.administrator):
+            return
+
+        member = payload.member if (add and isinstance(payload.member, discord.Member)) else guild.get_member(payload.user_id)
+        if not member or member.bot:
+            return
+
+        role = guild.get_role(binding["role_id"])
+        if not role or role.is_default() or role.managed or guild.me.top_role <= role:
+            return
+
+        try:
+            if add and role not in member.roles:
+                await member.add_roles(role, reason=f"Reaction role added ({emoji_key})")
+            elif not add and role in member.roles:
+                await member.remove_roles(role, reason=f"Reaction role removed ({emoji_key})")
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        await self._handle_reaction_role(payload, add=True)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        await self._handle_reaction_role(payload, add=False)
+
+    @reactionrole_group.command(name="add", description="Bind an emoji reaction on an existing message to a role")
+    @app_commands.describe(
+        message_id="The ID of the target message to attach the reaction to",
+        emoji="Unicode emoji (e.g. 🎮) or custom server emoji",
+        role="The role granted when reacting with this emoji",
+        channel="Channel containing the message (defaults to current channel)",
+    )
+    @app_commands.checks.has_permissions(manage_roles=True)
+    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    async def reactionrole_add(
+        self,
+        interaction: discord.Interaction,
+        message_id: str,
+        emoji: str,
+        role: discord.Role,
+        channel: Optional[discord.TextChannel] = None,
+    ):
+        guild = interaction.guild
+        msg_str = message_id.strip()
+        if not msg_str.isdigit():
+            await interaction.response.send_message("❌ Please provide a valid numeric Discord Message ID.", ephemeral=True)
+            return
+        msg_id = int(msg_str)
+
+        if role.is_default():
+            await interaction.response.send_message("❌ Cannot assign `@everyone` as a reaction role.", ephemeral=True)
+            return
+        if role.managed:
+            await interaction.response.send_message(f"❌ `{role.name}` is managed by an integration/bot and cannot be assigned manually.", ephemeral=True)
+            return
+        if interaction.user.id != guild.owner_id and interaction.user.top_role <= role:
+            await interaction.response.send_message("❌ You cannot bind a role equal to or higher than your highest role!", ephemeral=True)
+            return
+        if guild.me.top_role <= role:
+            await interaction.response.send_message("❌ I cannot manage a role equal to or higher than my highest role!", ephemeral=True)
+            return
+
+        target_channel = channel or interaction.channel
+        try:
+            target_msg = await target_channel.fetch_message(msg_id)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
+            await interaction.response.send_message(
+                f"❌ Could not find or access message `{msg_id}` in {target_channel.mention}: `{e}`",
+                ephemeral=True,
+            )
+            return
+
+        emoji_key = emoji.strip()
+        parsed_emoji = discord.PartialEmoji.from_str(emoji_key)
+        canonical_emoji = str(parsed_emoji)
+        try:
+            await target_msg.add_reaction(parsed_emoji)
+        except (discord.Forbidden, discord.HTTPException) as e:
+            await interaction.response.send_message(
+                f"❌ Could not add reaction `{emoji_key}` to that message (ensure I have `Add Reactions` permission and access to custom emojis): `{e}`",
+                ephemeral=True,
+            )
+            return
+
+        await database.add_reaction_role(guild.id, target_channel.id, msg_id, canonical_emoji, role.id)
+        embed = discord.Embed(
+            title="✨ Reaction Role Bound",
+            description=f"Reacting with {canonical_emoji} on [that message]({target_msg.jump_url}) will now grant {role.mention}.",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.add_field(name="Emoji", value=canonical_emoji, inline=True)
+        embed.add_field(name="Role", value=role.mention, inline=True)
+        embed.add_field(name="Channel", value=target_channel.mention, inline=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @reactionrole_group.command(name="remove", description="Unbind an emoji reaction role from a message")
+    @app_commands.describe(
+        message_id="The ID of the message",
+        emoji="The emoji binding to remove",
+    )
+    @app_commands.checks.has_permissions(manage_roles=True)
+    async def reactionrole_remove(
+        self,
+        interaction: discord.Interaction,
+        message_id: str,
+        emoji: str,
+    ):
+        msg_str = message_id.strip()
+        if not msg_str.isdigit():
+            await interaction.response.send_message("❌ Please provide a valid numeric Discord Message ID.", ephemeral=True)
+            return
+
+        canonical_emoji = str(discord.PartialEmoji.from_str(emoji.strip()))
+        removed = await database.remove_reaction_role(interaction.guild.id, int(msg_str), canonical_emoji)
+        if not removed:
+            await interaction.response.send_message(
+                f"❌ No reaction role binding found for `{canonical_emoji}` on message `{msg_str}`.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.send_message(
+            f"🗑️ Removed reaction role binding for {canonical_emoji} on message `{msg_str}`.",
+            ephemeral=True,
+        )
+
+    @reactionrole_group.command(name="list", description="List all active emoji reaction roles in this server")
+    @app_commands.checks.has_permissions(manage_roles=True)
+    async def reactionrole_list(self, interaction: discord.Interaction):
+        rows = await database.get_reaction_roles_by_guild(interaction.guild.id)
+        if not rows:
+            await interaction.response.send_message("ℹ️ No reaction roles are configured in this server yet.", ephemeral=True)
+            return
+
+        lines = []
+        for row in rows[:20]:
+            role = interaction.guild.get_role(row["role_id"])
+            role_txt = role.mention if role else f"`Deleted Role ({row['role_id']})`"
+            jump = f"https://discord.com/channels/{row['guild_id']}/{row['channel_id']}/{row['message_id']}"
+            lines.append(f"• {row['emoji']} → {role_txt} ([Message `{row['message_id']}`]({jump}))")
+
+        embed = discord.Embed(
+            title="🎭 Active Reaction Roles",
+            description="\n".join(lines),
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow(),
+        )
+        if len(rows) > 20:
+            embed.set_footer(text=f"Showing 20 of {len(rows)} reaction role bindings")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

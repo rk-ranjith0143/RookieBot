@@ -10,11 +10,14 @@ Let members pick their own notification/hobby roles with 1-click buttons, let mo
 ## 📑 Commands in This Guide
 1. [`/rolepanel`](#-rolepanel) — Create a persistent button panel for self-assignable roles (up to 5)
 2. [`/rolemenu`](#-rolemenu) — Create a persistent dropdown menu (up to 10 roles, optional Exclusive mode)
-3. [`/role`](#-role) — Manually add or remove a role from a member
-4. [`/temprole`](#-temprole) — Assign a temporary role that auto-expires cleanly
-5. [`/autorole set`](#-autorole-set) — Auto-assign roles when new humans or bots join
-6. [`/autorole status`](#-autorole-status) — Check current join auto-role settings
-7. [`/autorole remove`](#-autorole-remove) — Turn off auto-roles
+3. [`/reactionrole add`](#-reactionrole-add) — Bind a classic emoji reaction on any message to a role
+4. [`/reactionrole remove`](#-reactionrole-remove) — Remove an emoji reaction role binding
+5. [`/reactionrole list`](#-reactionrole-list) — List all active reaction roles in the server
+6. [`/role`](#-role) — Manually add or remove a role from a member
+7. [`/temprole`](#-temprole) — Assign a temporary role that auto-expires cleanly
+8. [`/autorole set`](#-autorole-set) — Auto-assign roles when new humans or bots join
+9. [`/autorole status`](#-autorole-status) — Check current join auto-role settings
+10. [`/autorole remove`](#-autorole-remove) — Turn off auto-roles
 
 ---
 
@@ -210,6 +213,65 @@ Assigns a role to a member for a limited time (e.g., `6h`, `7d`) and persists th
 ### 5. Common Errors & Solutions
 * **`❌ Invalid duration! Use a number followed by \`s\`, \`m\`, \`h\`, or \`d\` (max \`365d\`, e.g., \`6h\`, \`7d\`).`** → Use a single unit with no spaces (`30m`, `6h`, `7d`).
 * **`❌ I cannot manage that role because it is equal to or higher than my highest role!`** → Move RookieBot's role above the target role in **Server Settings → Roles**.
+
+---
+
+## 🎮 `/reactionrole add`
+
+Binds any classic Unicode emoji (like `🎮`) or custom server emoji on an **existing message** (such as a rules post or custom `/embed`) so reacting gives the role and unreacting removes it—100% restart-safe in SQLite.
+
+### 1. Requirements & Overview
+| Property | Value |
+| :--- | :--- |
+| **Command Syntax** | `/reactionrole add message_id:<id> emoji:<emoji> role:<@role> [channel:<#channel>]` |
+| **Who Can Use It** | Members with **Manage Roles** permission |
+| **Bot Needs** | **Manage Roles** + **Add Reactions** + higher role than target role |
+| **Response Visibility** | Ephemeral Embed (`👁️ Only you can see this`) |
+
+### 2. Parameters
+* **`message_id`** *(Required)*: Numeric Discord Message ID (enable Developer Mode → Right-Click Message → **Copy Message ID**).
+* **`emoji`** *(Required)*: Emoji to react with (`🎮`, `❤️`, or a custom server emoji).
+* **`role`** *(Required)*: Role granted on reaction add and removed on unreact.
+* **`channel`** *(Optional)*: Channel containing the message (defaults to current channel).
+
+### 3. Exact Step-by-Step Process in Discord
+1. Post your message or rules embed in a channel and copy its Message ID.
+2. Run `/reactionrole add` with **`message_id`**, **`emoji`**, and **`role`**.
+3. RookieBot adds the starter reaction onto the message and saves the binding in SQLite.
+
+### 4. Exact What You See in Discord
+```text
+🤖 RookieBot  [APP]  👁️ Only you can see this
+┌─────────────────────────────────────────────────────────────┐
+│ ✨ Reaction Role Bound                                      │
+│ Reacting with 🎮 on that message will now grant @Gamers.     │
+│                                                             │
+│ Emoji            Role              Channel                  │
+│ 🎮               @Gamers           #roles                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5. Common Errors & Solutions
+* **`❌ Please provide a valid numeric Discord Message ID.`** → Paste only the numeric Message ID, not the full message link.
+* **`❌ Could not find or access message ...`** → Specify the **`channel`** parameter if the message is in a different channel.
+
+---
+
+## 🗑️ `/reactionrole remove`
+
+Removes a reaction role binding from a message so reacting no longer changes roles.
+
+* **Syntax:** `/reactionrole remove message_id:<id> emoji:<emoji>`
+* **Exact Response:** `🗑️ Removed reaction role binding for 🎮 on message \`123456789012345678\`.`
+
+---
+
+## 📋 `/reactionrole list`
+
+Lists every active emoji reaction role binding in the server with clickable jump links to the bound messages.
+
+* **Syntax:** `/reactionrole list`
+* **Exact Response:** Ephemeral embed titled **🎭 Active Reaction Roles** listing `• 🎮 → @Gamers (Message \`123456789012345678\`)`.
 
 ---
 

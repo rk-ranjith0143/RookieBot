@@ -463,6 +463,19 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS reaction_roles (
+                guild_id INTEGER,
+                channel_id INTEGER,
+                message_id INTEGER,
+                emoji TEXT,
+                role_id INTEGER,
+                PRIMARY KEY (message_id, emoji)
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -2882,6 +2895,70 @@ def _delete_timed_action_sync(action_id: int) -> bool:
 
 async def delete_timed_action(action_id: int) -> bool:
     return await asyncio.to_thread(_delete_timed_action_sync, action_id)
+
+
+# ---------------------------------------------------------------------------
+# Classic Emoji Reaction Roles Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_reaction_role_sync(guild_id: int, channel_id: int, message_id: int, emoji: str, role_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO reaction_roles (guild_id, channel_id, message_id, emoji, role_id)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (guild_id, channel_id, message_id, emoji, role_id),
+        )
+        conn.commit()
+
+
+async def add_reaction_role(guild_id: int, channel_id: int, message_id: int, emoji: str, role_id: int):
+    await asyncio.to_thread(_add_reaction_role_sync, guild_id, channel_id, message_id, emoji, role_id)
+
+
+def _get_reaction_role_sync(message_id: int, emoji: str) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM reaction_roles WHERE message_id = ? AND emoji = ?",
+            (message_id, emoji),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_reaction_role(message_id: int, emoji: str) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_reaction_role_sync, message_id, emoji)
+
+
+def _get_reaction_roles_by_guild_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM reaction_roles WHERE guild_id = ? ORDER BY message_id, emoji",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_reaction_roles_by_guild(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_reaction_roles_by_guild_sync, guild_id)
+
+
+def _remove_reaction_role_sync(guild_id: int, message_id: int, emoji: str) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?",
+            (guild_id, message_id, emoji),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def remove_reaction_role(guild_id: int, message_id: int, emoji: str) -> bool:
+    return await asyncio.to_thread(_remove_reaction_role_sync, guild_id, message_id, emoji)
 
 
 
