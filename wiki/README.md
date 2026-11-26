@@ -19,7 +19,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 
 ---
 
-## 🗂️ Complete Wiki Index (All 19 Modules)
+## 🗂️ Complete Wiki Index (All 20 Modules)
 
 ### 🛡️ Section I: Security, Moderation & Verification
 | Guide | What's Inside | Commands Covered |
@@ -53,6 +53,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | **[16. Birthdays & Celebrations](16-Birthdays-and-Celebrations.md)** | Member birthday calendar, countdowns & automated daily celebrations | `/birthday set`, `/birthday view`, `/birthday upcoming`, `/birthday remove`, `/birthday setup`, `/birthday disable` |
 | **[17. Invites & Referrals](17-Invites-and-Referrals.md)** | Real-time invite link tracking, leaver deductions & referral contests | `/invites`, `/inviteleaderboard`, `/invitebonus`, `/invitereset` |
 | **[19. Scheduled Announcements](19-Scheduled-Announcements.md)** | Restart-safe recurring channel announcements & pause/resume controls | `/schedule add`, `/schedule list`, `/schedule toggle`, `/schedule remove` |
+| **[20. Counting Minigame](20-Counting-Minigame.md)** | Collaborative number streaks, safe math expressions & leaderboards | `/counting setup`, `/counting stats`, `/counting leaderboard`, `/counting disable` |
 
 ### 🧰 Section V: Utilities, Diagnostics & Monetization
 | Guide | What's Inside | Commands Covered |

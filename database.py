@@ -492,6 +492,31 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS counting_settings (
+                guild_id INTEGER PRIMARY KEY,
+                channel_id INTEGER,
+                current_count INTEGER DEFAULT 0,
+                last_user_id INTEGER DEFAULT NULL,
+                high_score INTEGER DEFAULT 0,
+                allow_math INTEGER DEFAULT 1
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS counting_user_stats (
+                guild_id INTEGER,
+                user_id INTEGER,
+                correct_counts INTEGER DEFAULT 0,
+                ruined_counts INTEGER DEFAULT 0,
+                PRIMARY KEY (guild_id, user_id)
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -3095,6 +3120,144 @@ def _toggle_scheduled_message_sync(guild_id: int, schedule_id: int, is_enabled: 
 
 async def toggle_scheduled_message(guild_id: int, schedule_id: int, is_enabled: bool) -> bool:
     return await asyncio.to_thread(_toggle_scheduled_message_sync, guild_id, schedule_id, is_enabled)
+
+
+# ---------------------------------------------------------------------------
+# Counting Channel Minigame Database Operations
+# ---------------------------------------------------------------------------
+
+def _set_counting_channel_sync(guild_id: int, channel_id: int, allow_math: bool = True):
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO counting_settings (guild_id, channel_id, current_count, last_user_id, high_score, allow_math)
+            VALUES (?, ?, 0, NULL, 0, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                channel_id = excluded.channel_id,
+                allow_math = excluded.allow_math
+            """,
+            (guild_id, channel_id, 1 if allow_math else 0),
+        )
+        conn.commit()
+
+
+async def set_counting_channel(guild_id: int, channel_id: int, allow_math: bool = True):
+    await asyncio.to_thread(_set_counting_channel_sync, guild_id, channel_id, allow_math)
+
+
+def _get_counting_settings_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM counting_settings WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_counting_settings(guild_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_counting_settings_sync, guild_id)
+
+
+def _disable_counting_channel_sync(guild_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM counting_settings WHERE guild_id = ?", (guild_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def disable_counting_channel(guild_id: int) -> bool:
+    return await asyncio.to_thread(_disable_counting_channel_sync, guild_id)
+
+
+def _record_counting_turn_sync(guild_id: int, user_id: int, next_count: int) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT high_score FROM counting_settings WHERE guild_id = ?", (guild_id,))
+        row = cursor.fetchone()
+        prev_high = row["high_score"] if row else 0
+        new_high = max(prev_high, next_count)
+        cursor.execute(
+            """
+            UPDATE counting_settings
+            SET current_count = ?, last_user_id = ?, high_score = ?
+            WHERE guild_id = ?
+            """,
+            (next_count, user_id, new_high, guild_id),
+        )
+        cursor.execute(
+            """
+            INSERT INTO counting_user_stats (guild_id, user_id, correct_counts, ruined_counts)
+            VALUES (?, ?, 1, 0)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                correct_counts = correct_counts + 1
+            """,
+            (guild_id, user_id),
+        )
+        conn.commit()
+        return new_high
+
+
+async def record_counting_turn(guild_id: int, user_id: int, next_count: int) -> int:
+    return await asyncio.to_thread(_record_counting_turn_sync, guild_id, user_id, next_count)
+
+
+def _reset_counting_streak_sync(guild_id: int, user_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE counting_settings SET current_count = 0, last_user_id = NULL WHERE guild_id = ?",
+            (guild_id,),
+        )
+        conn.execute(
+            """
+            INSERT INTO counting_user_stats (guild_id, user_id, correct_counts, ruined_counts)
+            VALUES (?, ?, 0, 1)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                ruined_counts = ruined_counts + 1
+            """,
+            (guild_id, user_id),
+        )
+        conn.commit()
+
+
+async def reset_counting_streak(guild_id: int, user_id: int):
+    await asyncio.to_thread(_reset_counting_streak_sync, guild_id, user_id)
+
+
+def _get_counting_user_stats_sync(guild_id: int, user_id: int) -> Dict[str, int]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT correct_counts, ruined_counts FROM counting_user_stats WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return {"correct_counts": 0, "ruined_counts": 0}
+        return dict(row)
+
+
+async def get_counting_user_stats(guild_id: int, user_id: int) -> Dict[str, int]:
+    return await asyncio.to_thread(_get_counting_user_stats_sync, guild_id, user_id)
+
+
+def _get_counting_leaderboard_sync(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT user_id, correct_counts, ruined_counts
+            FROM counting_user_stats
+            WHERE guild_id = ? AND correct_counts > 0
+            ORDER BY correct_counts DESC, ruined_counts ASC
+            LIMIT ?
+            """,
+            (guild_id, limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_counting_leaderboard(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_counting_leaderboard_sync, guild_id, limit)
 
 
 

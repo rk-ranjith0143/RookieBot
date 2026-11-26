@@ -175,6 +175,7 @@ class HelpCategorySelect(discord.ui.Select):
                     "• `/starboard setup [channel] [threshold]` - Feature community starred messages.\n"
                     "• `/poll [question] [options...]` - Interactive polls with numbered reactions.\n"
                     "• `/giveaway start / list / end / reroll` - Restart-safe timed giveaways with rerolls.\n"
+                    "• `/counting setup / stats / leaderboard / disable` - Counting channel minigame with streaks & math.\n"
                     "• `/birthday set / view / upcoming / setup` - Automated server birthday celebrations.\n"
                     "• `/invites [member]` & `/inviteleaderboard` - Track server referrals and top inviters."
                 ),

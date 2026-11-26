@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 118 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
+> View the complete text-based tutorials with exact Discord previews for all 122 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
@@ -215,6 +215,11 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/schedule list`: Inspect active/paused schedules, repeat intervals, and next post countdowns.
 - `/schedule toggle [schedule_id] [enabled]` & `/schedule remove [schedule_id]`: Pause, resume, or delete scheduled announcements.
 
+### 30. 🔢 Counting Channel Minigame (`cogs/counting.py`)
+- `/counting setup [channel] [allow_math]`: Turn a channel into a collaborative counting streak game with optional safe math expressions (`40 + 2`).
+- `/counting stats [member]` & `/counting leaderboard`: View current streaks, all-time high scores, ruined counts, and Top 10 server counters.
+- `/counting disable`: Turn off the counting channel minigame.
+
 ---
 
 ## 🗂️ Project Structure
@@ -228,6 +233,7 @@ RookieBot/
 │   ├── autoresponder.py # Keyword trigger auto-replies (/autoresponder)
 │   ├── autorole.py      # Automated role assignment on join (/autorole)
 │   ├── birthdays.py     # Birthday calendar & auto-celebrations (/birthday)
+│   ├── counting.py      # Counting channel minigame & safe math (/counting)
 │   ├── economy.py       # /balance, /daily, /pay, and /coinflip mini-games
 │   ├── embeds.py        # Interactive announcement modal (/embed)
 │   ├── events.py        # Welcome & leave greetings (/setwelcome, /setleave)
@@ -252,10 +258,10 @@ RookieBot/
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── wiki/
-│   └── README.md        # Step-by-step Discord command tutorials (19 modules)
+│   └── README.md        # Step-by-step Discord command tutorials (20 modules)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 78-test automated test suite
+├── test_bot.py          # Comprehensive 82-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -268,16 +274,16 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 29 Cogs, 75 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 30 Cogs, 76 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 78 test cases pass with a 100% success rate:
-- ✅ 29 Cogs discovery & extension loading
-- ✅ 75 Slash commands registered in command tree
+All 82 test cases pass with a 100% success rate:
+- ✅ 30 Cogs discovery & extension loading
+- ✅ 76 Slash commands registered in command tree
 - ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)

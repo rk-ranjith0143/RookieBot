@@ -33,6 +33,7 @@ from cogs.premium import PremiumUpgradeView
 from cogs.verification import VerifyLaunchView
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
+from cogs.counting import evaluate_counting_expression
 from cogs.birthdays import is_valid_birthday, days_until_birthday
 from cogs.applications import ApplicationLaunchView, ApplicationReviewView
 from bot import RookieBot
@@ -68,8 +69,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_29_cogs_loaded(self):
-        """Verify all 29 Cogs are discovered and successfully loaded."""
+    def test_all_30_cogs_loaded(self):
+        """Verify all 30 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "Applications",
@@ -77,6 +78,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "AutoResponder",
             "AutoRole",
             "Birthdays",
+            "Counting",
             "Economy",
             "Embeds",
             "Events",
@@ -108,8 +110,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_75_slash_commands_registered(self):
-        """Verify all 75 application commands are present in the command tree."""
+    def test_all_76_slash_commands_registered(self):
+        """Verify all 76 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -125,6 +127,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "clear",
             "clearwarns",
             "coinflip",
+            "counting",
             "daily",
             "delwarn",
             "eco",
@@ -984,6 +987,42 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await database.delete_scheduled_message(guild_id, sched_id))
         self.assertEqual(len(await database.get_guild_scheduled_messages(guild_id)), 0)
 
+    async def test_counting_database_operations(self):
+        """Verify counting channel setup, turns, high scores, streak resets, and leaderboard."""
+        guild_id = 828282
+        await database.set_counting_channel(guild_id, 919191, allow_math=True)
+        cfg = await database.get_counting_settings(guild_id)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["current_count"], 0)
+
+        high = await database.record_counting_turn(guild_id, 1001, 1)
+        self.assertEqual(high, 1)
+        high = await database.record_counting_turn(guild_id, 1002, 2)
+        self.assertEqual(high, 2)
+
+        lb = await database.get_counting_leaderboard(guild_id)
+        self.assertEqual(len(lb), 2)
+
+        await database.reset_counting_streak(guild_id, 1001)
+        cfg = await database.get_counting_settings(guild_id)
+        self.assertEqual(cfg["current_count"], 0)
+        self.assertEqual(cfg["high_score"], 2)
+        u1 = await database.get_counting_user_stats(guild_id, 1001)
+        self.assertEqual(u1["correct_counts"], 1)
+        self.assertEqual(u1["ruined_counts"], 1)
+        self.assertTrue(await database.disable_counting_channel(guild_id))
+
+    def test_counting_math_evaluator(self):
+        """Verify safe arithmetic evaluation and rejection of non-math/unsafe inputs."""
+        self.assertEqual(evaluate_counting_expression("42"), 42)
+        self.assertEqual(evaluate_counting_expression("40 + 2"), 42)
+        self.assertEqual(evaluate_counting_expression("(10 + 5) * 2"), 30)
+        self.assertEqual(evaluate_counting_expression("84 / 2"), 42)
+        self.assertIsNone(evaluate_counting_expression("5 / 2"))
+        self.assertIsNone(evaluate_counting_expression("2 ** 100"))
+        self.assertIsNone(evaluate_counting_expression("hello chat"))
+        self.assertIsNone(evaluate_counting_expression("40 + 2", allow_math=False))
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -1758,6 +1797,44 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
 
         await sched_cog.schedule_toggle.callback(sched_cog, interaction, schedule_id=sid, enabled=False)
         await sched_cog.schedule_remove.callback(sched_cog, interaction, schedule_id=sid)
+
+        # -------------------------------------------------------------
+        # Counting Cog Commands & Message Listeners
+        # -------------------------------------------------------------
+        count_cog = self.bot.get_cog("Counting")
+        await count_cog.counting_setup.callback(count_cog, interaction, channel=channel, allow_math=True)
+
+        msg1 = MagicMock(spec=discord.Message)
+        msg1.author = user
+        msg1.guild = guild
+        msg1.channel = channel
+        msg1.content = "1"
+        msg1.add_reaction = AsyncMock()
+        await count_cog.on_message(msg1)
+        msg1.add_reaction.assert_called_with("✅")
+
+        msg2 = MagicMock(spec=discord.Message)
+        msg2.author = target_user
+        msg2.guild = guild
+        msg2.channel = channel
+        msg2.content = "1 + 1"
+        msg2.add_reaction = AsyncMock()
+        await count_cog.on_message(msg2)
+        msg2.add_reaction.assert_called_with("🏆")
+
+        # Ruin count by repeating same user twice in a row
+        msg3 = MagicMock(spec=discord.Message)
+        msg3.author = target_user
+        msg3.guild = guild
+        msg3.channel = channel
+        msg3.content = "3"
+        msg3.add_reaction = AsyncMock()
+        await count_cog.on_message(msg3)
+        msg3.add_reaction.assert_called_with("❌")
+
+        await count_cog.counting_stats.callback(count_cog, interaction, member=None)
+        await count_cog.counting_leaderboard.callback(count_cog, interaction)
+        await count_cog.counting_disable.callback(count_cog, interaction)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)
