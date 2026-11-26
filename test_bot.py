@@ -34,6 +34,7 @@ from cogs.verification import VerifyLaunchView
 from cogs.reminders import parse_time_string
 from cogs.afk import format_duration
 from cogs.birthdays import is_valid_birthday, days_until_birthday
+from cogs.applications import ApplicationLaunchView, ApplicationReviewView
 from bot import RookieBot
 
 
@@ -67,10 +68,11 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_27_cogs_loaded(self):
-        """Verify all 27 Cogs are discovered and successfully loaded."""
+    def test_all_28_cogs_loaded(self):
+        """Verify all 28 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
+            "Applications",
             "AutoMod",
             "AutoResponder",
             "AutoRole",
@@ -105,11 +107,12 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_70_slash_commands_registered(self):
-        """Verify all 70 application commands are present in the command tree."""
+    def test_all_71_slash_commands_registered(self):
+        """Verify all 71 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
+            "apply",
             "automod",
             "autoresponder",
             "autorole",
@@ -855,6 +858,41 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await database.reset_guild_invites(guild_id)
         self.assertEqual(await database.get_user_invite_stats(guild_id, inviter_id), {"regular": 0, "leaves": 0, "bonus": 0, "total": 0})
 
+    async def test_applications_database_operations(self):
+        """Verify application form configs, submissions, message linking, and review status."""
+        guild_id = 313131
+        await database.set_application_config(
+            guild_id=guild_id,
+            panel_channel_id=101,
+            review_channel_id=202,
+            accept_role_id=303,
+            title="Staff App",
+            questions=["Why join?", "Timezone?"],
+        )
+        cfg = await database.get_application_config(guild_id)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["questions"], ["Why join?", "Timezone?"])
+        self.assertEqual(cfg["is_enabled"], 1)
+
+        app_id = await database.create_application(
+            guild_id=guild_id,
+            applicant_id=9090,
+            answers=[{"question": "Why join?", "answer": "To help!"}],
+        )
+        await database.set_application_review_message(app_id, 555777)
+
+        by_msg = await database.get_application_by_message(555777)
+        self.assertIsNotNone(by_msg)
+        self.assertEqual(by_msg["id"], app_id)
+        self.assertEqual(by_msg["status"], "pending")
+
+        await database.update_application_status(app_id, "accepted", reviewer_id=4242)
+        updated = await database.get_application(app_id)
+        self.assertEqual(updated["status"], "accepted")
+        self.assertEqual(updated["reviewed_by"], 4242)
+
+        self.assertTrue(await database.disable_application_config(guild_id))
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -951,6 +989,13 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
 
         verify_view = VerifyLaunchView()
         self.assertEqual(verify_view.children[0].custom_id, "verify_member_btn")
+
+        app_launch = ApplicationLaunchView()
+        self.assertEqual(app_launch.children[0].custom_id, "app_launch_btn")
+
+        app_review = ApplicationReviewView()
+        self.assertEqual(app_review.children[0].custom_id, "app_btn_accept")
+        self.assertEqual(app_review.children[1].custom_id, "app_btn_deny")
 
     def test_reminder_time_parser(self):
         """Verify time string parsing into seconds."""
@@ -1511,6 +1556,41 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await inv_cog.invitebonus.callback(inv_cog, interaction, member=target_user, amount=3)
         await inv_cog.on_member_remove(user)
         await inv_cog.invitereset.callback(inv_cog, interaction)
+
+        # -------------------------------------------------------------
+        # Applications Cog Commands & Review Flow
+        # -------------------------------------------------------------
+        app_cog = self.bot.get_cog("Applications")
+        await app_cog.apply_setup.callback(
+            app_cog,
+            interaction,
+            panel_channel=channel,
+            review_channel=channel,
+            question1="Why do you want to be staff?",
+            question2="What is your timezone?",
+            accept_role=mock_role,
+        )
+        await app_cog.apply_status.callback(app_cog, interaction)
+
+        created_app_id = await database.create_application(
+            guild.id, user.id, [{"question": "Why?", "answer": "Active daily"}]
+        )
+        await database.set_application_review_message(created_app_id, mock_msg.id)
+        review_interaction = MagicMock(spec=discord.Interaction)
+        review_interaction.guild = guild
+        review_interaction.user = user
+        review_interaction.message = mock_msg
+        review_interaction.response = AsyncMock()
+        guild.get_member = MagicMock(return_value=user)
+        guild.get_role = MagicMock(return_value=mock_role)
+        user.send = AsyncMock()
+
+        review_view = ApplicationReviewView()
+        await review_view.accept_button.callback(review_interaction)
+        reviewed = await database.get_application(created_app_id)
+        self.assertEqual(reviewed["status"], "accepted")
+
+        await app_cog.apply_disable.callback(app_cog, interaction)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

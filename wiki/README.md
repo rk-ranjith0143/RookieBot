@@ -19,7 +19,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 
 ---
 
-## 🗂️ Complete Wiki Index (All 17 Modules)
+## 🗂️ Complete Wiki Index (All 18 Modules)
 
 ### 🛡️ Section I: Security, Moderation & Verification
 | Guide | What's Inside | Commands Covered |
@@ -32,7 +32,8 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 ### 📩 Section II: Support, Roles, Logs & Server Stats
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
-| **[05. Support Tickets](05-Support-Tickets.md)** | Private support ticket channels with `📩 Open Ticket` & `🔒 Close Ticket` | `/ticketsetup` |
+| **[05. Support Tickets](05-Support-Tickets.md)** | Private support ticket channels with `📩 Open Ticket`, `✋ Claim Ticket` & transcripts | `/ticketsetup` |
+| **[18. Staff Applications](18-Staff-Applications.md)** | Custom 5-question modal forms & `✅ Accept` / `❌ Deny` review cards | `/apply setup`, `/apply status`, `/apply disable` |
 | **[06. Roles & Auto-Roles](06-Roles-and-AutoRoles.md)** | Button self-role menus, dropdown role menus, manual toggling & auto join roles | `/rolepanel`, `/rolemenu`, `/role`, `/autorole set`, `/autorole status`, `/autorole remove` |
 | **[07. Welcome, Leave & Audit Logs](07-Welcome-Leave-and-Audit-Logs.md)** | Join/leave cards with placeholders & 10 automatic audit log events | `/setwelcome`, `/setleave`, `/setlogs` |
 | **[08. Server Stats Counters](08-Server-Stats-Counters.md)** | Live locked voice channels displaying Total, Humans & Bots | `/serverstats setup`, `/serverstats refresh`, `/serverstats remove` |

@@ -149,11 +149,11 @@ class HelpCategorySelect(discord.ui.Select):
                 inline=False,
             )
             embed.add_field(
-                name="Member Verification Gate",
+                name="Member Verification Gate & Applications",
                 value=(
                     "• `/verifysetup [channel] [role]` - Deploy a 1-click verification panel to stop bots.\n"
-                    "• `/verifystatus` - View current verification gate status.\n"
-                    "• `/verifyremove` - Disable verification for this server."
+                    "• `/verifystatus` & `/verifyremove` - View or disable verification gate.\n"
+                    "• `/apply setup / status / disable` - Custom application forms with Accept/Deny review."
                 ),
                 inline=False,
             )

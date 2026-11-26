@@ -1,4 +1,5 @@
 import os
+import json
 import time
 import sqlite3
 import asyncio
@@ -414,6 +415,35 @@ def init_db_sync():
                 invite_code TEXT,
                 joined_at REAL,
                 PRIMARY KEY (guild_id, member_id)
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS application_configs (
+                guild_id INTEGER PRIMARY KEY,
+                panel_channel_id INTEGER,
+                review_channel_id INTEGER,
+                accept_role_id INTEGER DEFAULT NULL,
+                title TEXT,
+                questions_json TEXT,
+                is_enabled INTEGER DEFAULT 1
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS applications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                applicant_id INTEGER,
+                review_message_id INTEGER DEFAULT NULL,
+                answers_json TEXT,
+                status TEXT DEFAULT 'pending',
+                reviewed_by INTEGER DEFAULT NULL,
+                created_at REAL
             )
             """
         )
@@ -2584,6 +2614,177 @@ def _reset_guild_invites_sync(guild_id: int):
 
 async def reset_guild_invites(guild_id: int):
     await asyncio.to_thread(_reset_guild_invites_sync, guild_id)
+
+
+# ---------------------------------------------------------------------------
+# Staff Applications & Custom Forms Database Operations
+# ---------------------------------------------------------------------------
+
+def _set_application_config_sync(
+    guild_id: int,
+    panel_channel_id: int,
+    review_channel_id: int,
+    accept_role_id: Optional[int],
+    title: str,
+    questions: List[str],
+):
+    q_json = json.dumps(questions)
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO application_configs (
+                guild_id, panel_channel_id, review_channel_id, accept_role_id, title, questions_json, is_enabled
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                panel_channel_id = excluded.panel_channel_id,
+                review_channel_id = excluded.review_channel_id,
+                accept_role_id = excluded.accept_role_id,
+                title = excluded.title,
+                questions_json = excluded.questions_json,
+                is_enabled = 1
+            """,
+            (guild_id, panel_channel_id, review_channel_id, accept_role_id, title, q_json),
+        )
+        conn.commit()
+
+
+async def set_application_config(
+    guild_id: int,
+    panel_channel_id: int,
+    review_channel_id: int,
+    accept_role_id: Optional[int],
+    title: str,
+    questions: List[str],
+):
+    await asyncio.to_thread(
+        _set_application_config_sync,
+        guild_id,
+        panel_channel_id,
+        review_channel_id,
+        accept_role_id,
+        title,
+        questions,
+    )
+
+
+def _get_application_config_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM application_configs WHERE guild_id = ?",
+            (guild_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        data = dict(row)
+        data["questions"] = json.loads(data.get("questions_json") or "[]")
+        return data
+
+
+async def get_application_config(guild_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_application_config_sync, guild_id)
+
+
+def _disable_application_config_sync(guild_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE application_configs SET is_enabled = 0 WHERE guild_id = ?",
+            (guild_id,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def disable_application_config(guild_id: int) -> bool:
+    return await asyncio.to_thread(_disable_application_config_sync, guild_id)
+
+
+def _create_application_sync(
+    guild_id: int,
+    applicant_id: int,
+    answers: List[Dict[str, str]],
+) -> int:
+    a_json = json.dumps(answers)
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO applications (guild_id, applicant_id, answers_json, status, created_at)
+            VALUES (?, ?, ?, 'pending', ?)
+            """,
+            (guild_id, applicant_id, a_json, time.time()),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+async def create_application(
+    guild_id: int,
+    applicant_id: int,
+    answers: List[Dict[str, str]],
+) -> int:
+    return await asyncio.to_thread(_create_application_sync, guild_id, applicant_id, answers)
+
+
+def _set_application_review_message_sync(app_id: int, message_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE applications SET review_message_id = ? WHERE id = ?",
+            (message_id, app_id),
+        )
+        conn.commit()
+
+
+async def set_application_review_message(app_id: int, message_id: int):
+    await asyncio.to_thread(_set_application_review_message_sync, app_id, message_id)
+
+
+def _get_application_sync(app_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM applications WHERE id = ?", (app_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        data = dict(row)
+        data["answers"] = json.loads(data.get("answers_json") or "[]")
+        return data
+
+
+async def get_application(app_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_application_sync, app_id)
+
+
+def _get_application_by_message_sync(message_id: int) -> Optional[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM applications WHERE review_message_id = ?", (message_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        data = dict(row)
+        data["answers"] = json.loads(data.get("answers_json") or "[]")
+        return data
+
+
+async def get_application_by_message(message_id: int) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_application_by_message_sync, message_id)
+
+
+def _update_application_status_sync(app_id: int, status: str, reviewer_id: int):
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE applications SET status = ?, reviewed_by = ? WHERE id = ?",
+            (status, reviewer_id, app_id),
+        )
+        conn.commit()
+
+
+async def update_application_status(app_id: int, status: str, reviewer_id: int):
+    await asyncio.to_thread(_update_application_status_sync, app_id, status, reviewer_id)
 
 
 
