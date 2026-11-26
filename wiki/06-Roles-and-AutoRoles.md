@@ -11,9 +11,10 @@ Let members pick their own notification/hobby roles with 1-click buttons, let mo
 1. [`/rolepanel`](#-rolepanel) — Create a persistent button panel for self-assignable roles (up to 5)
 2. [`/rolemenu`](#-rolemenu) — Create a persistent dropdown menu (up to 10 roles, optional Exclusive mode)
 3. [`/role`](#-role) — Manually add or remove a role from a member
-4. [`/autorole set`](#-autorole-set) — Auto-assign roles when new humans or bots join
-5. [`/autorole status`](#-autorole-status) — Check current join auto-role settings
-6. [`/autorole remove`](#-autorole-remove) — Turn off auto-roles
+4. [`/temprole`](#-temprole) — Assign a temporary role that auto-expires cleanly
+5. [`/autorole set`](#-autorole-set) — Auto-assign roles when new humans or bots join
+6. [`/autorole status`](#-autorole-status) — Check current join auto-role settings
+7. [`/autorole remove`](#-autorole-remove) — Turn off auto-roles
 
 ---
 
@@ -160,6 +161,55 @@ Quickly toggles a role on a specific member (adds it if missing, removes it if a
 └─────────────────────────────────────────────────────────────┘
 ```
 *(If the member already had the role, it shows `Removed @VIP from @Alex.` with an orange embed bar.)*
+
+---
+
+## ⏳ `/temprole`
+
+Assigns a role to a member for a limited time (e.g., `6h`, `7d`) and persists the expiry timestamp in SQLite so **RookieBot automatically removes the role** when time is up—even across bot restarts.
+
+### 1. Requirements & Overview
+| Property | Value |
+| :--- | :--- |
+| **Command Syntax** | `/temprole member:<@user> role:<@role> duration:<time> [reason:<text>]` |
+| **Who Can Use It** | Members with **Manage Roles** permission |
+| **Bot Needs** | **Manage Roles** + higher role than target role |
+| **Response Visibility** | Public Embed |
+
+### 2. Parameters
+* **`member`** *(Required)*: Target server member.
+* **`role`** *(Required)*: Role to temporarily grant.
+* **`duration`** *(Required)*: Role length (`s`, `m`, `h`, or `d`, max `365d`, e.g., `6h`, `7d`).
+* **`reason`** *(Optional)*: Saved in Discord Audit Log and shown in the embed. Defaults to `Temporary role assignment`.
+
+### 3. Exact Step-by-Step Process in Discord
+1. Type `/temprole`.
+2. Pick **`member`**, **`role`**, and enter **`duration`** (e.g., `7d`).
+3. *(Optional)* Enter **`reason`** and press **`Enter`**.
+4. RookieBot assigns the role immediately and checks every 30 seconds to remove it once expired.
+
+### 4. Exact What You See in Discord
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 RookieBot  [APP]  Today at 2:25 PM                        │
+├─────────────────────────────────────────────────────────────┤
+│ ⏳ Temporary Role Assigned                                  │
+│ Granted @Event VIP to @Alex for `7d`.                       │
+│                                                             │
+│ Expires                                                     │
+│ in 7 days                                                   │
+│                                                             │
+│ Moderator                                                   │
+│ @Moderator                                                  │
+│                                                             │
+│ Reason                                                      │
+│ Weekend tournament winner                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5. Common Errors & Solutions
+* **`❌ Invalid duration! Use a number followed by \`s\`, \`m\`, \`h\`, or \`d\` (max \`365d\`, e.g., \`6h\`, \`7d\`).`** → Use a single unit with no spaces (`30m`, `6h`, `7d`).
+* **`❌ I cannot manage that role because it is equal to or higher than my highest role!`** → Move RookieBot's role above the target role in **Server Settings → Roles**.
 
 ---
 

@@ -1,9 +1,13 @@
 import datetime
+import time
 from typing import Optional
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
+
+import database
+from cogs.reminders import parse_time_string
 
 
 class Moderation(commands.Cog):
@@ -11,6 +15,33 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    def cog_unload(self):
+        if self.tempban_loop.is_running():
+            self.tempban_loop.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.tempban_loop.is_running():
+            self.tempban_loop.start()
+
+    @tasks.loop(seconds=30.0)
+    async def tempban_loop(self):
+        """Poll SQLite for expired temporary bans and unban automatically."""
+        due = await database.get_due_timed_actions(time.time(), action_type="tempban")
+        for item in due:
+            guild = self.bot.get_guild(item["guild_id"])
+            await database.delete_timed_action(item["id"])
+            if not guild:
+                continue
+            try:
+                await guild.unban(discord.Object(id=item["user_id"]), reason="Temporary ban expired automatically")
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                pass
+
+    @tempban_loop.before_loop
+    async def before_tempban_loop(self):
+        await self.bot.wait_until_ready()
 
     @app_commands.command(name="kick", description="Kick a member from the server")
     @app_commands.describe(
@@ -135,6 +166,88 @@ class Moderation(commands.Cog):
         embed.add_field(name="User", value=f"{user.mention} (`{user}` - `{user.id}`)", inline=False)
         embed.add_field(name="Moderator", value=interaction.user.mention, inline=True)
         embed.add_field(name="Deleted Messages", value=f"{delete_days} day(s)", inline=True)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.set_thumbnail(url=user.display_avatar.url)
+
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="tempban", description="Temporarily ban a user for a specified duration (e.g. 10m, 2h, 7d)")
+    @app_commands.describe(
+        user="The user or member to temporarily ban",
+        duration="Ban duration (e.g. 30m, 2h, 7d, 30d)",
+        reason="Reason for the temporary ban",
+    )
+    @app_commands.checks.has_permissions(ban_members=True)
+    @app_commands.checks.bot_has_permissions(ban_members=True)
+    async def tempban(
+        self,
+        interaction: discord.Interaction,
+        user: discord.User,
+        duration: str,
+        reason: Optional[str] = "No reason provided",
+    ):
+        guild = interaction.guild
+        duration_sec = parse_time_string(duration)
+        if duration_sec <= 0 or duration_sec > 86400 * 365:
+            await interaction.response.send_message(
+                "❌ Invalid duration! Use a number followed by `s`, `m`, `h`, or `d` (max `365d`, e.g., `2h`, `7d`).",
+                ephemeral=True,
+            )
+            return
+
+        if user.id == interaction.user.id:
+            await interaction.response.send_message("❌ You cannot ban yourself!", ephemeral=True)
+            return
+        if self.bot.user and user.id == self.bot.user.id:
+            await interaction.response.send_message("❌ I cannot ban myself!", ephemeral=True)
+            return
+        if user.id == guild.owner_id:
+            await interaction.response.send_message("❌ You cannot ban the server owner!", ephemeral=True)
+            return
+
+        member = guild.get_member(user.id)
+        if member:
+            if interaction.user.id != guild.owner_id and interaction.user.top_role <= member.top_role:
+                await interaction.response.send_message(
+                    "❌ You cannot ban someone with a role equal to or higher than yours!",
+                    ephemeral=True,
+                )
+                return
+            if guild.me.top_role <= member.top_role:
+                await interaction.response.send_message(
+                    "❌ I cannot ban someone with a role equal to or higher than my highest role!",
+                    ephemeral=True,
+                )
+                return
+
+            try:
+                await member.send(
+                    f"⏳ You were temporarily banned from **{guild.name}** for **{duration}**.\n**Reason:** {reason}"
+                )
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+        expires_at = time.time() + duration_sec
+        audit_reason = f"Temp-banned by {interaction.user} (ID: {interaction.user.id}) for {duration}: {reason}"
+        await guild.ban(user, reason=audit_reason)
+        await database.add_timed_action(
+            guild_id=guild.id,
+            user_id=user.id,
+            action_type="tempban",
+            expires_at=expires_at,
+            moderator_id=interaction.user.id,
+            reason=reason or "No reason provided",
+        )
+
+        embed = discord.Embed(
+            title="⏳ Member Temporarily Banned",
+            color=discord.Color.dark_red(),
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.add_field(name="User", value=f"{user.mention} (`{user}` - `{user.id}`)", inline=False)
+        embed.add_field(name="Duration", value=f"`{duration}`", inline=True)
+        embed.add_field(name="Unbans", value=f"<t:{int(expires_at)}:R> (<t:{int(expires_at)}:f>)", inline=True)
+        embed.add_field(name="Moderator", value=interaction.user.mention, inline=True)
         embed.add_field(name="Reason", value=reason, inline=False)
         embed.set_thumbnail(url=user.display_avatar.url)
 

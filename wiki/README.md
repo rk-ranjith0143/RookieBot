@@ -24,7 +24,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 ### 🛡️ Section I: Security, Moderation & Verification
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
-| **[01. Core Moderation Suite](01-Moderation-Suite.md)** | Kicking, banning, timeouts, message purging, slowmode & channel locking | `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/clear`, `/slowmode`, `/lock`, `/unlock` |
+| **[01. Core Moderation Suite](01-Moderation-Suite.md)** | Kicking, banning, tempbans, timeouts, message purging, slowmode & channel locking | `/kick`, `/ban`, `/tempban`, `/unban`, `/timeout`, `/untimeout`, `/clear`, `/slowmode`, `/lock`, `/unlock` |
 | **[02. Warnings & Infractions](02-Warnings-and-Infractions.md)** | Formal warnings with automatic **3 → 5 → 7** punishment escalation | `/warn`, `/warnings`, `/delwarn`, `/clearwarns` |
 | **[03. AutoMod Protection](03-AutoMod-Protection.md)** | Anti-invite, custom word blacklist, mass-mention, anti-flood & anti-raid shields | `/automod status`, `/automod toggle`, `/automod word add`, `/automod word remove`, `/automod word list` |
 | **[04. Verification Gate](04-Verification-Gate.md)** | 1-click green `✅ Verify` gate for new server members | `/verifysetup`, `/verifystatus`, `/verifyremove` |
@@ -34,7 +34,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 | :--- | :--- | :--- |
 | **[05. Support Tickets](05-Support-Tickets.md)** | Private support ticket channels with `📩 Open Ticket`, `✋ Claim Ticket` & transcripts | `/ticketsetup` |
 | **[18. Staff Applications](18-Staff-Applications.md)** | Custom 5-question modal forms & `✅ Accept` / `❌ Deny` review cards | `/apply setup`, `/apply status`, `/apply disable` |
-| **[06. Roles & Auto-Roles](06-Roles-and-AutoRoles.md)** | Button self-role menus, dropdown role menus, manual toggling & auto join roles | `/rolepanel`, `/rolemenu`, `/role`, `/autorole set`, `/autorole status`, `/autorole remove` |
+| **[06. Roles & Auto-Roles](06-Roles-and-AutoRoles.md)** | Button self-role menus, dropdown role menus, manual toggling, temp roles & auto join roles | `/rolepanel`, `/rolemenu`, `/role`, `/temprole`, `/autorole set`, `/autorole status`, `/autorole remove` |
 | **[07. Welcome, Leave & Audit Logs](07-Welcome-Leave-and-Audit-Logs.md)** | Join/leave cards with placeholders & 10 automatic audit log events | `/setwelcome`, `/setleave`, `/setlogs` |
 | **[08. Server Stats Counters](08-Server-Stats-Counters.md)** | Live locked voice channels displaying Total, Humans & Bots | `/serverstats setup`, `/serverstats refresh`, `/serverstats remove` |
 

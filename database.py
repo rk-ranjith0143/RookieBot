@@ -448,6 +448,21 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS timed_actions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                user_id INTEGER,
+                action_type TEXT,
+                role_id INTEGER DEFAULT NULL,
+                moderator_id INTEGER,
+                reason TEXT,
+                expires_at REAL
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -2785,6 +2800,88 @@ def _update_application_status_sync(app_id: int, status: str, reviewer_id: int):
 
 async def update_application_status(app_id: int, status: str, reviewer_id: int):
     await asyncio.to_thread(_update_application_status_sync, app_id, status, reviewer_id)
+
+
+# ---------------------------------------------------------------------------
+# Timed Punishments & Temporary Roles Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_timed_action_sync(
+    guild_id: int,
+    user_id: int,
+    action_type: str,
+    expires_at: float,
+    role_id: Optional[int] = None,
+    moderator_id: Optional[int] = None,
+    reason: str = "No reason provided",
+) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        if role_id is None:
+            cursor.execute(
+                "DELETE FROM timed_actions WHERE guild_id = ? AND user_id = ? AND action_type = ? AND role_id IS NULL",
+                (guild_id, user_id, action_type),
+            )
+        else:
+            cursor.execute(
+                "DELETE FROM timed_actions WHERE guild_id = ? AND user_id = ? AND action_type = ? AND role_id = ?",
+                (guild_id, user_id, action_type, role_id),
+            )
+        cursor.execute(
+            """
+            INSERT INTO timed_actions (guild_id, user_id, action_type, role_id, moderator_id, reason, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (guild_id, user_id, action_type, role_id, moderator_id, reason, expires_at),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+async def add_timed_action(
+    guild_id: int,
+    user_id: int,
+    action_type: str,
+    expires_at: float,
+    role_id: Optional[int] = None,
+    moderator_id: Optional[int] = None,
+    reason: str = "No reason provided",
+) -> int:
+    return await asyncio.to_thread(
+        _add_timed_action_sync, guild_id, user_id, action_type, expires_at, role_id, moderator_id, reason
+    )
+
+
+def _get_due_timed_actions_sync(now: float, action_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        if action_type:
+            cursor.execute(
+                "SELECT * FROM timed_actions WHERE action_type = ? AND expires_at <= ?",
+                (action_type, now),
+            )
+        else:
+            cursor.execute(
+                "SELECT * FROM timed_actions WHERE expires_at <= ?",
+                (now,),
+            )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_due_timed_actions(now: float, action_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_due_timed_actions_sync, now, action_type)
+
+
+def _delete_timed_action_sync(action_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM timed_actions WHERE id = ?", (action_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def delete_timed_action(action_id: int) -> bool:
+    return await asyncio.to_thread(_delete_timed_action_sync, action_id)
 
 
 

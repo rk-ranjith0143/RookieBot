@@ -12,13 +12,14 @@ Keep your Discord server safe, clean, and under control. This guide explains eve
 ## 📑 Commands in This Guide
 1. [`/kick`](#-kick) — Remove a member from the server
 2. [`/ban`](#-ban) — Permanently ban a user (with optional message cleanup)
-3. [`/unban`](#-unban) — Unban a user by their User ID
-4. [`/timeout`](#-timeout) — Temporarily mute a member (1 min to 28 days)
-5. [`/untimeout`](#-untimeout) — Remove an active timeout early
-6. [`/clear`](#-clear) — Bulk delete up to 100 messages
-7. [`/slowmode`](#-slowmode) — Set a typing cooldown in a text channel
-8. [`/lock`](#-lock) — Prevent `@everyone` from sending messages in a channel
-9. [`/unlock`](#-unlock) — Re-open a locked channel
+3. [`/tempban`](#-tempban) — Temporarily ban a user with automatic unban
+4. [`/unban`](#-unban) — Unban a user by their User ID
+5. [`/timeout`](#-timeout) — Temporarily mute a member (1 min to 28 days)
+6. [`/untimeout`](#-untimeout) — Remove an active timeout early
+7. [`/clear`](#-clear) — Bulk delete up to 100 messages
+8. [`/slowmode`](#-slowmode) — Set a typing cooldown in a text channel
+9. [`/lock`](#-lock) — Prevent `@everyone` from sending messages in a channel
+10. [`/unlock`](#-unlock) — Re-open a locked channel
 
 ---
 
@@ -155,6 +156,46 @@ Bans a user from the server permanently (until unbanned) and optionally deletes 
 ### 6. Common Errors & Solutions
 * **`❌ I cannot ban someone with a role equal to or higher than my highest role!`** → Drag **RookieBot** higher in **Server Settings → Roles**.
 * **`❌ You cannot ban yourself!` / `❌ I cannot ban myself!` / `❌ You cannot ban the server owner!`** → Self-ban, bot-ban, and owner-ban are blocked for safety.
+
+---
+
+## ⏳ `/tempban`
+
+### 1. What It Does
+Temporarily bans a user from your server for a specific duration (e.g., `2h`, `7d`) and saves the expiry timestamp in SQLite so **RookieBot automatically unbans them** even if the bot restarts in the meantime.
+
+### 2. Required Permissions
+* **Moderator**: `Ban Members`
+* **RookieBot**: `Ban Members` + higher role than target (if currently in the server)
+
+### 3. Parameters
+| Parameter | Required? | Description | Example |
+| :--- | :--- | :--- | :--- |
+| `user` | Yes | Member or user to temporarily ban | `@Spammer` |
+| `duration` | Yes | Ban length (`s`, `m`, `h`, or `d`, max `365d`) | `7d` |
+| `reason` | No | Audit log & DM reason | `Repeated spam after warning` |
+
+### 4. Step-by-Step Walkthrough
+1. Type `/tempban` in any channel.
+2. Select `user`, enter a `duration` such as `2h` or `7d`, and add an optional `reason`.
+3. Send the command. RookieBot DMs the user, bans them, logs to SQLite, and checks every 30 seconds to unban them once the timer expires.
+
+### 5. Exact Output Preview (Discord Embed & DM)
+**Channel Embed (Red):**
+> **⏳ Member Temporarily Banned**
+> * **User:** @Spammer (`123456789012345678`)
+> * **Duration:** `7d`
+> * **Unbans:** <t:1760000000:R>
+> * **Moderator:** @Admin
+> * **Reason:** Repeated spam after warning
+
+**DM Sent to User:**
+> ⏳ You were temporarily banned from **Your Server Name** for **7d**.
+> **Reason:** Repeated spam after warning
+
+### 6. Common Errors & Solutions
+* **`❌ Invalid duration! Use a number followed by \`s\`, \`m\`, \`h\`, or \`d\` (max \`365d\`, e.g., \`2h\`, \`7d\`).`** → Make sure there are no spaces and use one unit (`30m`, `12h`, `7d`).
+* **`❌ I cannot temporarily ban someone with a role equal to or higher than my highest role!`** → Move RookieBot's role above the target user's highest role.
 
 ---
 

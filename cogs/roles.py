@@ -1,10 +1,14 @@
 import re
 import secrets
+import time
 from typing import List, Optional
 
 import discord
 from discord import app_commands, ui
-from discord.ext import commands
+from discord.ext import commands, tasks
+
+import database
+from cogs.reminders import parse_time_string
 
 
 class RoleButton(ui.DynamicItem[ui.Button], template=r"selfrole:role:(?P<role_id>[0-9]+)"):
@@ -208,6 +212,36 @@ class Roles(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    def cog_unload(self):
+        if self.temprole_loop.is_running():
+            self.temprole_loop.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.temprole_loop.is_running():
+            self.temprole_loop.start()
+
+    @tasks.loop(seconds=30.0)
+    async def temprole_loop(self):
+        """Poll SQLite for expired temporary role grants and remove them automatically."""
+        due = await database.get_due_timed_actions(time.time(), action_type="temprole")
+        for item in due:
+            guild = self.bot.get_guild(item["guild_id"])
+            await database.delete_timed_action(item["id"])
+            if not guild or not item.get("role_id"):
+                continue
+            member = guild.get_member(item["user_id"])
+            role = guild.get_role(item["role_id"])
+            if member and role and role in member.roles and guild.me and guild.me.top_role > role:
+                try:
+                    await member.remove_roles(role, reason="Temporary role expired automatically")
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+
+    @temprole_loop.before_loop
+    async def before_temprole_loop(self):
+        await self.bot.wait_until_ready()
+
     async def _validate_self_roles(
         self,
         interaction: discord.Interaction,
@@ -407,6 +441,68 @@ class Roles(commands.Cog):
             color=color,
             timestamp=discord.utils.utcnow(),
         )
+        embed.add_field(name="Moderator", value=interaction.user.mention, inline=True)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="temprole", description="Temporarily assign a role to a member that auto-removes when expired")
+    @app_commands.describe(
+        member="The member to assign the temporary role to",
+        role="The role to assign temporarily",
+        duration="Duration before automatic removal (e.g. 30m, 6h, 7d)",
+        reason="Reason for temporary role assignment",
+    )
+    @app_commands.checks.has_permissions(manage_roles=True)
+    @app_commands.checks.bot_has_permissions(manage_roles=True)
+    async def temprole(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        role: discord.Role,
+        duration: str,
+        reason: Optional[str] = "Temporary role assignment",
+    ):
+        guild = interaction.guild
+        duration_sec = parse_time_string(duration)
+        if duration_sec <= 0 or duration_sec > 86400 * 365:
+            await interaction.response.send_message(
+                "❌ Invalid duration! Use a number followed by `s`, `m`, `h`, or `d` (max `365d`, e.g., `6h`, `7d`).",
+                ephemeral=True,
+            )
+            return
+
+        if role.is_default():
+            await interaction.response.send_message("❌ Cannot assign `@everyone`.", ephemeral=True)
+            return
+        if role.managed:
+            await interaction.response.send_message(f"❌ `{role.name}` is managed by an integration/bot and cannot be assigned manually.", ephemeral=True)
+            return
+        if interaction.user.id != guild.owner_id and interaction.user.top_role <= role:
+            await interaction.response.send_message("❌ You cannot manage a role equal to or higher than your highest role!", ephemeral=True)
+            return
+        if guild.me.top_role <= role:
+            await interaction.response.send_message("❌ I cannot manage a role equal to or higher than my highest role!", ephemeral=True)
+            return
+
+        expires_at = time.time() + duration_sec
+        await member.add_roles(role, reason=f"Temp-role by {interaction.user} for {duration}: {reason}")
+        await database.add_timed_action(
+            guild_id=guild.id,
+            user_id=member.id,
+            action_type="temprole",
+            expires_at=expires_at,
+            role_id=role.id,
+            moderator_id=interaction.user.id,
+            reason=reason or "Temporary role assignment",
+        )
+
+        embed = discord.Embed(
+            title="⏳ Temporary Role Assigned",
+            description=f"Granted {role.mention} to {member.mention} for `{duration}`.",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.add_field(name="Expires", value=f"<t:{int(expires_at)}:R> (<t:{int(expires_at)}:f>)", inline=True)
         embed.add_field(name="Moderator", value=interaction.user.mention, inline=True)
         embed.add_field(name="Reason", value=reason, inline=False)
         await interaction.response.send_message(embed=embed)

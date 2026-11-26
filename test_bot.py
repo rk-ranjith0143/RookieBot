@@ -107,8 +107,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_71_slash_commands_registered(self):
-        """Verify all 71 application commands are present in the command tree."""
+    def test_all_73_slash_commands_registered(self):
+        """Verify all 73 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -167,6 +167,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "suggest",
             "suggeststatus",
             "tag",
+            "tempban",
+            "temprole",
             "tempvc",
             "ticketsetup",
             "timeout",
@@ -893,6 +895,43 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(await database.disable_application_config(guild_id))
 
+    async def test_timed_actions_database_operations(self):
+        """Verify temporary ban and temporary role persistence, querying due, and deletion."""
+        import time as pytime
+        guild_id = 515151
+        user_id = 616161
+        past_ts = pytime.time() - 5.0
+
+        tb_id = await database.add_timed_action(
+            guild_id=guild_id,
+            user_id=user_id,
+            action_type="tempban",
+            expires_at=past_ts,
+            moderator_id=1010,
+            reason="7d ban",
+        )
+        tr_id = await database.add_timed_action(
+            guild_id=guild_id,
+            user_id=user_id,
+            action_type="temprole",
+            expires_at=past_ts,
+            role_id=777888,
+            moderator_id=1010,
+            reason="Temp VIP",
+        )
+
+        due_bans = await database.get_due_timed_actions(pytime.time(), action_type="tempban")
+        self.assertEqual(len(due_bans), 1)
+        self.assertEqual(due_bans[0]["id"], tb_id)
+
+        due_roles = await database.get_due_timed_actions(pytime.time(), action_type="temprole")
+        self.assertEqual(len(due_roles), 1)
+        self.assertEqual(due_roles[0]["role_id"], 777888)
+
+        self.assertTrue(await database.delete_timed_action(tb_id))
+        self.assertTrue(await database.delete_timed_action(tr_id))
+        self.assertEqual(len(await database.get_due_timed_actions(pytime.time())), 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -1168,6 +1207,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         mod = self.bot.get_cog("Moderation")
         await mod.clear.callback(mod, interaction, amount=2)
         await mod.timeout.callback(mod, interaction, member=user, duration=5)
+        await mod.tempban.callback(mod, interaction, user=user, duration="2h", reason="Cooldown ban")
         await mod.kick.callback(mod, interaction, member=user)
         await mod.slowmode.callback(mod, interaction, seconds=10, channel=channel)
         await mod.lock.callback(mod, interaction, channel=channel, reason="Testing lock")
@@ -1521,6 +1561,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
 
         await roles_cog.rolepanel.callback(roles_cog, interaction, title="Roles", role1=mock_role)
         await roles_cog.rolemenu.callback(roles_cog, interaction, title="Colors", role1=mock_role, role2=mock_role2, exclusive=True)
+        await roles_cog.temprole.callback(roles_cog, interaction, member=user, role=mock_role2, duration="6h", reason="Event prize")
 
         # Simulate exclusive dropdown selection swapping mock_role -> mock_role2
         user.roles = [mock_role]

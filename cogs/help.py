@@ -71,6 +71,7 @@ class HelpCategorySelect(discord.ui.Select):
                     "• `/delwarn [id]` & `/clearwarns [member]` - Remove or purge infractions.\n"
                     "• `/kick [member] [reason]` - Kick a member from the server.\n"
                     "• `/ban [member] [reason] [delete_days]` - Ban a user with optional message purge.\n"
+                    "• `/tempban [user] [duration] [reason]` - Temporarily ban a user with automatic unban.\n"
                     "• `/unban [user_id] [reason]` - Unban a user using their numeric ID.\n"
                     "• `/timeout [member] [duration] [reason]` - Mute/timeout a member (up to 28 days).\n"
                     "• `/untimeout [member]` - Remove an active timeout."
@@ -143,6 +144,7 @@ class HelpCategorySelect(discord.ui.Select):
                     "• `/rolepanel [title] [description] [roles...]` - Create button self-role panels.\n"
                     "• `/rolemenu [title] [roles...] [exclusive]` - Dropdown role menus (up to 10 roles, optional exclusive mode).\n"
                     "• `/role [member] [role]` - Quickly assign or remove a role from a user.\n"
+                    "• `/temprole [member] [role] [duration]` - Assign a temporary role that auto-expires.\n"
                     "• `/autorole set [member_role] [bot_role]` - Automatically assign roles upon joining.\n"
                     "• `/autorole status` - View current auto-role configuration."
                 ),
