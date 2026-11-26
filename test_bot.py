@@ -69,8 +69,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_30_cogs_loaded(self):
-        """Verify all 30 Cogs are discovered and successfully loaded."""
+    def test_all_31_cogs_loaded(self):
+        """Verify all 31 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "Applications",
@@ -93,6 +93,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "Roles",
             "Scheduler",
             "ServerStats",
+            "Settings",
             "Starboard",
             "Sticky",
             "Suggestions",
@@ -110,8 +111,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_78_slash_commands_registered(self):
-        """Verify all 78 application commands are present in the command tree."""
+    def test_all_79_slash_commands_registered(self):
+        """Verify all 79 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -165,6 +166,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "setleave",
             "setlogs",
             "setsuggestchannel",
+            "settings",
             "setwelcome",
             "shop",
             "slots",
@@ -1860,6 +1862,33 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await count_cog.counting_stats.callback(count_cog, interaction, member=None)
         await count_cog.counting_leaderboard.callback(count_cog, interaction)
         await count_cog.counting_disable.callback(count_cog, interaction)
+
+        # -------------------------------------------------------------
+        # Settings Dashboard Cog & Interactive Controls
+        # -------------------------------------------------------------
+        from cogs.settings import SettingsDashboardView, ShieldToggleSelect, QuickChannelSelect
+        settings_cog = self.bot.get_cog("Settings")
+        await settings_cog.settings.callback(settings_cog, interaction)
+
+        dash_view = SettingsDashboardView(author_id=user.id)
+        gs_before = await database.get_guild_settings(guild.id)
+        expected_toggled = 0 if gs_before["anti_invite"] else 1
+        shield_sel = next(c for c in dash_view.children if isinstance(c, ShieldToggleSelect))
+        shield_sel._values = ["anti_invite"]
+        await shield_sel.callback(interaction)
+        gs_after = await database.get_guild_settings(guild.id)
+        self.assertEqual(gs_after["anti_invite"], expected_toggled)
+
+        mod_chan_sel = next(c for c in dash_view.children if isinstance(c, QuickChannelSelect))
+        mod_chan_sel._values = [channel]
+        await mod_chan_sel.callback(interaction)
+        gs_after = await database.get_guild_settings(guild.id)
+        self.assertEqual(gs_after["mod_log_channel_id"], channel.id)
+
+        await database.update_guild_setting(guild.id, "anti_invite", 0)
+        await dash_view.enable_all_automod.callback(interaction)
+        gs_after = await database.get_guild_settings(guild.id)
+        self.assertEqual(gs_after["anti_invite"], 1)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

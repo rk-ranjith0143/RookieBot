@@ -242,6 +242,7 @@ class HelpCategorySelect(discord.ui.Select):
                 name="🚀 Quick Start Commands",
                 value=(
                     "• `/help` - View this interactive guide.\n"
+                    "• `/settings` - Open the all-in-one server setup dashboard.\n"
                     "• `/premium` - Check subscription tier & perks.\n"
                     "• `/ticketsetup` - Deploy a support ticket panel.\n"
                     "• `/setwelcome` - Configure greeting cards.\n"

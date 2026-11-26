@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 124 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
+> View the complete text-based tutorials with exact Discord previews for all 125 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
@@ -221,6 +221,9 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/counting stats [member]` & `/counting leaderboard`: View current streaks, all-time high scores, ruined counts, and Top 10 server counters.
 - `/counting disable`: Turn off the counting channel minigame.
 
+### 31. ⚙️ All-in-One Server Setup Dashboard (`cogs/settings.py`)
+- `/settings`: Interactive ephemeral control panel showing live module status (AutoMod shields, channels, verification, roles, birthdays, counting, tickets, schedules, and premium tier) with dropdowns to toggle AutoMod shields or bind Mod-Log, Welcome, and Suggestions channels in 1 click.
+
 ---
 
 ## 🗂️ Project Structure
@@ -249,6 +252,7 @@ RookieBot/
 │   ├── roles.py         # Persistent button, dropdown, reaction & temp roles
 │   ├── scheduler.py     # Recurring scheduled announcements (/schedule)
 │   ├── serverstats.py   # Live locked voice stats channels (/serverstats)
+│   ├── settings.py      # Interactive all-in-one server dashboard (/settings)
 │   ├── starboard.py     # Reaction starboard showcase (/starboard)
 │   ├── sticky.py        # Persistent bottom-pinned notices (/sticky)
 │   ├── suggestions.py   # Suggestions with persistent voting buttons (/suggest)
@@ -259,7 +263,7 @@ RookieBot/
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── wiki/
-│   └── README.md        # Step-by-step Discord command tutorials (20 modules)
+│   └── README.md        # Step-by-step Discord command tutorials (21 modules)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
 ├── test_bot.py          # Comprehensive 82-test automated test suite
@@ -275,7 +279,7 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 30 Cogs, 78 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 31 Cogs, 79 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
@@ -283,8 +287,8 @@ python test_bot.py -v
 ```
 
 All 82 test cases pass with a 100% success rate:
-- ✅ 30 Cogs discovery & extension loading
-- ✅ 78 Slash commands registered in command tree
+- ✅ 31 Cogs discovery & extension loading
+- ✅ 79 Slash commands registered in command tree
 - ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)
