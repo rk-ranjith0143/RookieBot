@@ -188,6 +188,7 @@ class HelpCategorySelect(discord.ui.Select):
                     "• `/autoresponder add` - Trigger automated replies to specific keywords.\n"
                     "• `/serverstats setup` - Live voice channels showing member & bot counts.\n"
                     "• `/remindme [time] [message]` - Scheduled timers and alerts.\n"
+                    "• `/schedule add / list / toggle / remove` - Recurring automated channel announcements.\n"
                     "• `/afk [reason]` - Away status with mention auto-replies."
                 ),
                 inline=False,

@@ -476,6 +476,22 @@ def init_db_sync():
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scheduled_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER,
+                channel_id INTEGER,
+                author_id INTEGER,
+                title TEXT,
+                message TEXT,
+                interval_seconds INTEGER,
+                next_run_at REAL,
+                is_enabled INTEGER DEFAULT 1
+            )
+            """
+        )
+
         conn.commit()
 
 
@@ -2959,6 +2975,126 @@ def _remove_reaction_role_sync(guild_id: int, message_id: int, emoji: str) -> bo
 
 async def remove_reaction_role(guild_id: int, message_id: int, emoji: str) -> bool:
     return await asyncio.to_thread(_remove_reaction_role_sync, guild_id, message_id, emoji)
+
+
+# ---------------------------------------------------------------------------
+# Recurring Scheduled Announcements Database Operations
+# ---------------------------------------------------------------------------
+
+def _add_scheduled_message_sync(
+    guild_id: int,
+    channel_id: int,
+    author_id: int,
+    title: str,
+    message: str,
+    interval_seconds: int,
+    next_run_at: float,
+) -> int:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO scheduled_messages (
+                guild_id, channel_id, author_id, title, message, interval_seconds, next_run_at, is_enabled
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            """,
+            (guild_id, channel_id, author_id, title, message, interval_seconds, next_run_at),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+async def add_scheduled_message(
+    guild_id: int,
+    channel_id: int,
+    author_id: int,
+    title: str,
+    message: str,
+    interval_seconds: int,
+    next_run_at: float,
+) -> int:
+    return await asyncio.to_thread(
+        _add_scheduled_message_sync,
+        guild_id,
+        channel_id,
+        author_id,
+        title,
+        message,
+        interval_seconds,
+        next_run_at,
+    )
+
+
+def _get_due_scheduled_messages_sync(now: float) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM scheduled_messages WHERE is_enabled = 1 AND next_run_at <= ? ORDER BY next_run_at ASC",
+            (now,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_due_scheduled_messages(now: float) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_due_scheduled_messages_sync, now)
+
+
+def _advance_scheduled_message_sync(schedule_id: int, next_run_at: float):
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE scheduled_messages SET next_run_at = ? WHERE id = ?",
+            (next_run_at, schedule_id),
+        )
+        conn.commit()
+
+
+async def advance_scheduled_message(schedule_id: int, next_run_at: float):
+    await asyncio.to_thread(_advance_scheduled_message_sync, schedule_id, next_run_at)
+
+
+def _get_guild_scheduled_messages_sync(guild_id: int) -> List[Dict[str, Any]]:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM scheduled_messages WHERE guild_id = ? ORDER BY id ASC",
+            (guild_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+async def get_guild_scheduled_messages(guild_id: int) -> List[Dict[str, Any]]:
+    return await asyncio.to_thread(_get_guild_scheduled_messages_sync, guild_id)
+
+
+def _delete_scheduled_message_sync(guild_id: int, schedule_id: int) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM scheduled_messages WHERE guild_id = ? AND id = ?",
+            (guild_id, schedule_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def delete_scheduled_message(guild_id: int, schedule_id: int) -> bool:
+    return await asyncio.to_thread(_delete_scheduled_message_sync, guild_id, schedule_id)
+
+
+def _toggle_scheduled_message_sync(guild_id: int, schedule_id: int, is_enabled: bool) -> bool:
+    with _get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE scheduled_messages SET is_enabled = ? WHERE guild_id = ? AND id = ?",
+            (1 if is_enabled else 0, guild_id, schedule_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+async def toggle_scheduled_message(guild_id: int, schedule_id: int, is_enabled: bool) -> bool:
+    return await asyncio.to_thread(_toggle_scheduled_message_sync, guild_id, schedule_id, is_enabled)
 
 
 

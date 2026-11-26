@@ -68,8 +68,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
     # 1. Cogs & Command Registration Tests
     # -----------------------------------------------------------------------
 
-    def test_all_28_cogs_loaded(self):
-        """Verify all 28 Cogs are discovered and successfully loaded."""
+    def test_all_29_cogs_loaded(self):
+        """Verify all 29 Cogs are discovered and successfully loaded."""
         expected_cogs = {
             "AFK",
             "Applications",
@@ -89,6 +89,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "Premium",
             "Reminders",
             "Roles",
+            "Scheduler",
             "ServerStats",
             "Starboard",
             "Sticky",
@@ -107,8 +108,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_74_slash_commands_registered(self):
-        """Verify all 74 application commands are present in the command tree."""
+    def test_all_75_slash_commands_registered(self):
+        """Verify all 75 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -154,6 +155,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "rolemenu",
             "rolepanel",
             "roll",
+            "schedule",
             "serverinfo",
             "serverstats",
             "setleave",
@@ -952,6 +954,36 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(removed)
         self.assertIsNone(await database.get_reaction_role(message_id, "🎮"))
 
+    async def test_scheduled_messages_database_operations(self):
+        """Verify adding, toggling, advancing, querying due, and deleting scheduled announcements."""
+        import time as pytime
+        guild_id = 717171
+        channel_id = 818181
+        past_ts = pytime.time() - 5.0
+
+        sched_id = await database.add_scheduled_message(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            author_id=111,
+            title="Daily Bump",
+            message="Don't forget to bump the server!",
+            interval_seconds=3600,
+            next_run_at=past_ts,
+        )
+        due = await database.get_due_scheduled_messages(pytime.time())
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0]["id"], sched_id)
+
+        await database.advance_scheduled_message(sched_id, pytime.time() + 3600)
+        self.assertEqual(len(await database.get_due_scheduled_messages(pytime.time())), 0)
+
+        self.assertTrue(await database.toggle_scheduled_message(guild_id, sched_id, False))
+        rows = await database.get_guild_scheduled_messages(guild_id)
+        self.assertEqual(rows[0]["is_enabled"], 0)
+
+        self.assertTrue(await database.delete_scheduled_message(guild_id, sched_id))
+        self.assertEqual(len(await database.get_guild_scheduled_messages(guild_id)), 0)
+
     # -----------------------------------------------------------------------
     # 3. Auto-Mod Regular Expression Tests
     # -----------------------------------------------------------------------
@@ -1692,6 +1724,40 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reviewed["status"], "accepted")
 
         await app_cog.apply_disable.callback(app_cog, interaction)
+
+        # -------------------------------------------------------------
+        # Scheduler Cog Commands & Loop Delivery
+        # -------------------------------------------------------------
+        sched_cog = self.bot.get_cog("Scheduler")
+        channel.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, embed_links=True))
+        await sched_cog.schedule_add.callback(
+            sched_cog,
+            interaction,
+            channel=channel,
+            interval="1h",
+            message="Join our weekly community call!",
+            title="📣 Weekly Call",
+            start_delay="5m",
+        )
+        await sched_cog.schedule_list.callback(sched_cog, interaction)
+        guild_schedules = await database.get_guild_scheduled_messages(guild.id)
+        self.assertEqual(len(guild_schedules), 1)
+        sid = guild_schedules[0]["id"]
+
+        # Simulate due announcement firing inside scheduler_loop
+        import time as pytime
+        await database.advance_scheduled_message(sid, pytime.time() - 10)
+        orig_get_chan = self.bot.get_channel
+        self.bot.get_channel = MagicMock(return_value=channel)
+        channel.send.reset_mock()
+        try:
+            await sched_cog.scheduler_loop()
+            channel.send.assert_called()
+        finally:
+            self.bot.get_channel = orig_get_chan
+
+        await sched_cog.schedule_toggle.callback(sched_cog, interaction, schedule_id=sid, enabled=False)
+        await sched_cog.schedule_remove.callback(sched_cog, interaction, schedule_id=sid)
 
         # Assert responses were sent without errors across all calls
         self.assertTrue(interaction.response.send_message.called or interaction.channel.send.called)

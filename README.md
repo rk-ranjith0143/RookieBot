@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 114 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
+> View the complete text-based tutorials with exact Discord previews for all 118 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
@@ -210,6 +210,11 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - Staff review submitted applications in `#review-channel` with persistent **`✅ Accept`** and **`❌ Deny`** buttons (auto-assigns `accept_role` and DMs applicants).
 - `/apply status` & `/apply disable`: Inspect or close server applications.
 
+### 29. 🗓️ Recurring Scheduled Announcements (`cogs/scheduler.py`)
+- `/schedule add [channel] [interval] [message] [title] [start_delay]`: Post automated repeating announcements (`1m` to `30d`) persisted in SQLite across restarts.
+- `/schedule list`: Inspect active/paused schedules, repeat intervals, and next post countdowns.
+- `/schedule toggle [schedule_id] [enabled]` & `/schedule remove [schedule_id]`: Pause, resume, or delete scheduled announcements.
+
 ---
 
 ## 🗂️ Project Structure
@@ -234,7 +239,8 @@ RookieBot/
 │   ├── polls.py         # /poll and timed /giveaway
 │   ├── premium.py       # Monetization engine, /premium, /redeem, and /license
 │   ├── reminders.py     # /remindme with background loop and SQLite queue
-│   ├── roles.py         # Persistent button self-role panels (/rolepanel)
+│   ├── roles.py         # Persistent button, dropdown, reaction & temp roles
+│   ├── scheduler.py     # Recurring scheduled announcements (/schedule)
 │   ├── serverstats.py   # Live locked voice stats channels (/serverstats)
 │   ├── starboard.py     # Reaction starboard showcase (/starboard)
 │   ├── sticky.py        # Persistent bottom-pinned notices (/sticky)
@@ -246,10 +252,10 @@ RookieBot/
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── wiki/
-│   └── README.md        # Step-by-step Discord command tutorials (18 modules)
+│   └── README.md        # Step-by-step Discord command tutorials (19 modules)
 ├── bot.py               # Main bot launcher and dynamic extension loader
 ├── database.py          # Asynchronous SQLite multi-tenant data layer & licensing
-├── test_bot.py          # Comprehensive 76-test automated test suite
+├── test_bot.py          # Comprehensive 78-test automated test suite
 ├── MONETIZATION.md      # SaaS, Stripe, and B2B Retainer playbook
 ├── Dockerfile           # Optimized production container
 ├── docker-compose.yml   # 24/7 background service orchestration
@@ -262,16 +268,16 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 28 Cogs, 74 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 29 Cogs, 75 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
 python test_bot.py -v
 ```
 
-All 76 test cases pass with a 100% success rate:
-- ✅ 28 Cogs discovery & extension loading
-- ✅ 74 Slash commands registered in command tree
+All 78 test cases pass with a 100% success rate:
+- ✅ 29 Cogs discovery & extension loading
+- ✅ 75 Slash commands registered in command tree
 - ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)
