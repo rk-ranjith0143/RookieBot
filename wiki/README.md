@@ -58,5 +58,5 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 ### 🧰 Section V: Utilities, Diagnostics & Monetization
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
-| **[14. Utilities, AFK, Reminders & Embeds](14-Utilities-AFK-Reminders-and-Embeds.md)** | Help directory, AFK status, timers, custom modal embeds, 8-ball, info & prefix cmds | `/help`, `/afk`, `/remindme`, `/embed`, `/serverinfo`, `/userinfo`, `/avatar`, `/roll`, `/8ball`, `/hello`, `!ping`, `!sync` |
+| **[14. Utilities, AFK, Reminders & Embeds](14-Utilities-AFK-Reminders-and-Embeds.md)** | Help directory, AFK status, timers, custom modal embeds, snipes, 8-ball, info & prefix cmds | `/help`, `/afk`, `/remindme`, `/embed`, `/serverinfo`, `/userinfo`, `/avatar`, `/roll`, `/8ball`, `/hello`, `/snipe`, `/editsnipe`, `!ping`, `!sync` |
 | **[15. Premium & Licensing](15-Premium-and-Licensing.md)** | Subscription tiers, redeeming keys & admin license management | `/premium`, `/redeem`, `/license generate`, `/license list`, `/license revoke` |

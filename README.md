@@ -5,7 +5,7 @@ An enterprise-ready, modular, multi-tenant Discord community management and util
 Engineered for 24/7 uptime, server monetization, community engagement, and multi-guild administration with SQLite async persistence and automated unit testing.
 
 > **📚 Official Command Wiki & Step-by-Step Discord Tutorials:**
-> View the complete text-based tutorials with exact Discord previews for all 122 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
+> View the complete text-based tutorials with exact Discord previews for all 124 commands & workflows on the **[RookieBot Official Wiki](https://github.com/rk-ranjith0143/RookieBot/wiki)** *(or browse offline copies in [wiki/README.md](wiki/README.md))*.
 
 ---
 
@@ -131,6 +131,7 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
 - `/serverinfo`: Server metadata, boosts, creation date, and channel counts.
 - `/userinfo [member]`: User roles, permissions, account age, and join date.
 - `/avatar [user]`: High-resolution avatar viewer with format downloads.
+- `/snipe [index]` & `/editsnipe [index]`: View up to the last 10 recently deleted messages or before/after message edits per channel.
 - `/roll [sides]`: Customizable dice roll.
 - `/8ball [question]`: Ask the Magic 8-Ball a yes/no question.
 - `/hello`: Bot greeting.
@@ -254,7 +255,7 @@ RookieBot/
 │   ├── tags.py          # Custom tags & auto-FAQ with autocomplete (/tag)
 │   ├── tempvc.py        # Join-to-Create dynamic voice channels & controls (/tempvc, /vc)
 │   ├── tickets.py       # Support ticket panels with private channels (/ticketsetup)
-│   ├── utility.py       # /serverinfo, /userinfo, /avatar, /roll, !ping, !sync
+│   ├── utility.py       # /serverinfo, /userinfo, /avatar, /snipe, /editsnipe, !ping, !sync
 │   ├── verification.py  # 1-click verification gate & persistent button (/verifysetup)
 │   └── warns.py         # Infraction tracking & auto-escalation (/warn, /warnings)
 ├── wiki/
@@ -274,7 +275,7 @@ RookieBot/
 
 ## 🧪 Automated Testing
 
-The bot includes an automated unit test suite that validates all 30 Cogs, 76 slash commands, database schema migrations, and UI components without requiring manual testing:
+The bot includes an automated unit test suite that validates all 30 Cogs, 78 slash commands, database schema migrations, and UI components without requiring manual testing:
 
 ```bash
 # Run the test suite
@@ -283,7 +284,7 @@ python test_bot.py -v
 
 All 82 test cases pass with a 100% success rate:
 - ✅ 30 Cogs discovery & extension loading
-- ✅ 76 Slash commands registered in command tree
+- ✅ 78 Slash commands registered in command tree
 - ✅ Multi-tenant database operations (Leveling, Level Roles, AutoRole, AutoResponder, Infractions & Warnings, Verification Gate, Temp VCs, Economy Shop & Inventory, AFK, Reminders, Economy, Sticky, Starboard, Suggestions, Tags, ServerStats, Licensing)
 - ✅ AutoMod regex link interception & anti-spam detection
 - ✅ UI views & button custom IDs (Tickets, Roles, Suggestions, Premium, Help, Verification)

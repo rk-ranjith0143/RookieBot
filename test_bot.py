@@ -110,8 +110,8 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             f"Missing or mismatched cogs: {expected_cogs - loaded_cogs}",
         )
 
-    def test_all_76_slash_commands_registered(self):
-        """Verify all 76 application commands are present in the command tree."""
+    def test_all_78_slash_commands_registered(self):
+        """Verify all 78 application commands are present in the command tree."""
         expected_commands = {
             "8ball",
             "afk",
@@ -131,6 +131,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "daily",
             "delwarn",
             "eco",
+            "editsnipe",
             "embed",
             "giveaway",
             "hello",
@@ -168,6 +169,7 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
             "shop",
             "slots",
             "slowmode",
+            "snipe",
             "starboard",
             "sticky",
             "suggest",
@@ -1265,6 +1267,29 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await util.serverinfo.callback(util, interaction)
         await util.userinfo.callback(util, interaction, member=None)
         await util.avatar.callback(util, interaction, user=None)
+
+        del_msg = MagicMock(spec=discord.Message)
+        del_msg.guild = guild
+        del_msg.author = user
+        del_msg.channel = channel
+        del_msg.content = "Secret deleted text"
+        del_msg.attachments = []
+        await util.on_message_delete(del_msg)
+        await util.snipe.callback(util, interaction, index=1)
+
+        edit_before = MagicMock(spec=discord.Message)
+        edit_before.guild = guild
+        edit_before.author = user
+        edit_before.channel = channel
+        edit_before.content = "Old text"
+        edit_after = MagicMock(spec=discord.Message)
+        edit_after.guild = guild
+        edit_after.author = user
+        edit_after.channel = channel
+        edit_after.content = "New text"
+        edit_after.jump_url = "https://discord.com/channels/123/456/789"
+        await util.on_message_edit(edit_before, edit_after)
+        await util.editsnipe.callback(util, interaction, index=1)
 
         # -------------------------------------------------------------
         # Premium Cog Commands

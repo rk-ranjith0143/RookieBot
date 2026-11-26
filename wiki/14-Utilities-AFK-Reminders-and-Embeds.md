@@ -15,8 +15,10 @@ All everyday server utilities, profile lookup cards, interactive announcement em
 8. [`/roll`](#-roll) — Roll a dice (default 6 sides)
 9. [`/8ball`](#-8ball) — Ask the Magic 8-Ball a yes/no question
 10. [`/hello`](#-hello) — Friendly greeting
-11. [`!ping`](#-ping-prefix-command) — Check bot latency in milliseconds
-12. [`!sync`](#-sync-prefix-command) — Force-sync slash commands *(Admin)*
+11. [`/snipe`](#-snipe) — Recover recently deleted messages in a channel
+12. [`/editsnipe`](#-editsnipe) — View before/after text of recently edited messages
+13. [`!ping`](#-ping-prefix-command) — Check bot latency in milliseconds
+14. [`!sync`](#-sync-prefix-command) — Force-sync slash commands *(Admin)*
 
 ---
 
@@ -197,6 +199,52 @@ Shows a user's profile picture in high resolution (`1024px`) with direct clickab
   ```
 * **`/hello`**: Sends a quick friendly welcome message from RookieBot.
   * Output: `Hey @Alex! I'm Rookie, your all-in-one server utility and community assistant. Type / to see my commands! 👋`
+
+---
+
+## 🎯 `/snipe`
+
+Shows the most recently deleted message in the current channel (up to the last 10 deleted messages per channel cached in memory).
+
+* **Syntax:** `/snipe [index:<1-10>]`
+* **Exact Discord Preview:**
+  ```text
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🤖 RookieBot  [APP]  Today at 5:45 PM                        │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 👤 Alex                                                     │
+  │ Oops I typed that in the wrong channel!                     │
+  │                                                             │
+  │ Sniped 1/3 • Deleted • Today at 5:44 PM                     │
+  └─────────────────────────────────────────────────────────────┘
+  ```
+* *If nothing is cached:* `ℹ️ Nothing recently deleted in this channel to snipe.`
+
+---
+
+## ✏️ `/editsnipe`
+
+Shows the **Before** and **After** content of the most recently edited message in the current channel (up to the last 10 edits cached per channel).
+
+* **Syntax:** `/editsnipe [index:<1-10>]`
+* **Exact Discord Preview:**
+  ```text
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🤖 RookieBot  [APP]  Today at 5:46 PM                        │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 👤 Alex                                                     │
+  │ Jump to Message                                             │
+  │                                                             │
+  │ Before                                                      │
+  │ Meeting is at 5 PM                                          │
+  │                                                             │
+  │ After                                                       │
+  │ Meeting is at 6 PM                                          │
+  │                                                             │
+  │ Edit Snipe 1/2 • Edited • Today at 5:45 PM                  │
+  └─────────────────────────────────────────────────────────────┘
+  ```
+* *If nothing is cached:* `ℹ️ Nothing recently edited in this channel to snipe.`
 
 ---
 

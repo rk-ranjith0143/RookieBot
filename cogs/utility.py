@@ -1,5 +1,6 @@
+from collections import deque
 import random
-from typing import Optional
+from typing import Dict, Optional
 
 import discord
 from discord import app_commands
@@ -11,6 +12,47 @@ class Utility(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self._deleted_cache: Dict[int, deque] = {}
+        self._edited_cache: Dict[int, deque] = {}
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        if not message.guild or message.author.bot:
+            return
+        if not message.content and not message.attachments:
+            return
+
+        bucket = self._deleted_cache.setdefault(message.channel.id, deque(maxlen=10))
+        bucket.appendleft(
+            {
+                "author_name": str(message.author),
+                "author_avatar": message.author.display_avatar.url,
+                "content": message.content or "*[No text content]*",
+                "attachments": [att.url for att in message.attachments[:3]],
+                "timestamp": discord.utils.utcnow(),
+            }
+        )
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        if not before.guild or before.author.bot:
+            return
+        if before.content == after.content:
+            return
+        if not before.content and not after.content:
+            return
+
+        bucket = self._edited_cache.setdefault(before.channel.id, deque(maxlen=10))
+        bucket.appendleft(
+            {
+                "author_name": str(before.author),
+                "author_avatar": before.author.display_avatar.url,
+                "before": before.content or "*[Empty]*",
+                "after": after.content or "*[Empty]*",
+                "jump_url": after.jump_url,
+                "timestamp": discord.utils.utcnow(),
+            }
+        )
 
     @commands.command(name="ping")
     async def ping(self, ctx: commands.Context):
@@ -235,6 +277,66 @@ class Utility(commands.Cog):
         embed.description = f"**Download:** [PNG]({png_url}) | [JPG]({jpg_url}) | [WEBP]({webp_url})"
         embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
 
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="snipe", description="View the most recently deleted message in this channel")
+    @app_commands.guild_only()
+    @app_commands.describe(index="Which recent deleted message to view (1 = most recent, up to 10)")
+    async def snipe(self, interaction: discord.Interaction, index: int = 1):
+        """Show cached recently deleted message in the current channel."""
+        bucket = self._deleted_cache.get(interaction.channel.id)
+        if not bucket:
+            await interaction.response.send_message("ℹ️ Nothing recently deleted in this channel to snipe.", ephemeral=True)
+            return
+        if index < 1 or index > len(bucket):
+            await interaction.response.send_message(
+                f"❌ Please pick an index between `1` and `{len(bucket)}`.",
+                ephemeral=True,
+            )
+            return
+
+        entry = bucket[index - 1]
+        embed = discord.Embed(
+            description=entry["content"][:4000],
+            color=discord.Color.red(),
+            timestamp=entry["timestamp"],
+        )
+        embed.set_author(name=entry["author_name"], icon_url=entry["author_avatar"])
+        if entry["attachments"]:
+            embed.add_field(
+                name="Attachments",
+                value="\n".join(entry["attachments"]),
+                inline=False,
+            )
+        embed.set_footer(text=f"Sniped {index}/{len(bucket)} • Deleted")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="editsnipe", description="View the most recently edited message (before & after) in this channel")
+    @app_commands.guild_only()
+    @app_commands.describe(index="Which recent edited message to view (1 = most recent, up to 10)")
+    async def editsnipe(self, interaction: discord.Interaction, index: int = 1):
+        """Show cached recently edited message before/after diff in the current channel."""
+        bucket = self._edited_cache.get(interaction.channel.id)
+        if not bucket:
+            await interaction.response.send_message("ℹ️ Nothing recently edited in this channel to snipe.", ephemeral=True)
+            return
+        if index < 1 or index > len(bucket):
+            await interaction.response.send_message(
+                f"❌ Please pick an index between `1` and `{len(bucket)}`.",
+                ephemeral=True,
+            )
+            return
+
+        entry = bucket[index - 1]
+        embed = discord.Embed(
+            description=f"[Jump to Message]({entry['jump_url']})",
+            color=discord.Color.orange(),
+            timestamp=entry["timestamp"],
+        )
+        embed.set_author(name=entry["author_name"], icon_url=entry["author_avatar"])
+        embed.add_field(name="Before", value=entry["before"][:1024], inline=False)
+        embed.add_field(name="After", value=entry["after"][:1024], inline=False)
+        embed.set_footer(text=f"Edit Snipe {index}/{len(bucket)} • Edited")
         await interaction.response.send_message(embed=embed)
 
 

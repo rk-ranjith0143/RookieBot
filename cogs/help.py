@@ -190,6 +190,7 @@ class HelpCategorySelect(discord.ui.Select):
                     "• `/serverstats setup` - Live voice channels showing member & bot counts.\n"
                     "• `/remindme [time] [message]` - Scheduled timers and alerts.\n"
                     "• `/schedule add / list / toggle / remove` - Recurring automated channel announcements.\n"
+                    "• `/snipe [index]` & `/editsnipe [index]` - Recover recently deleted or edited messages.\n"
                     "• `/afk [reason]` - Away status with mention auto-replies."
                 ),
                 inline=False,
