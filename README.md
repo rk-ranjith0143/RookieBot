@@ -25,7 +25,7 @@ Engineered for 24/7 uptime, server monetization, community engagement, and multi
   - Voice channel joins, leaves, and channel switches.
 
 ### 3. 📈 Leveling & Milestone Roles (`cogs/leveling.py`)
-- Automated chat activity XP system with 60s cooldowns to prevent spam abuse.
+- Automated **Chat XP** (`15–25 XP`, 60s cooldown) and **Voice Activity XP** (`10–20 XP/min` in active calls with anti-AFK farming filters).
 - `/rank [member]`: View dynamic rank cards with ASCII progress bars, level, current XP, and XP required for next level.
 - `/leaderboard`: Display the top 10 most active community members.
 - `/levelrole add [level] [role]`: Automatically reward members with custom vanity or perks roles upon hitting level milestones (e.g. Level 5, 10, 20).

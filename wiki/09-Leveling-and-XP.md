@@ -1,8 +1,10 @@
-# 📈 Module 9: Chat XP, Leaderboards & Level Roles
+# 📈 Module 9: Chat & Voice XP, Leaderboards & Level Roles
 
-Reward active community members automatically! Every message a member sends earns **15–25 random XP** (with a **60-second cooldown** to prevent spam). Reaching new levels posts a **Level Up** celebration card and unlocks automatic **Level Role Rewards**.
+Reward active community members automatically! Every message a member sends earns **15–25 random XP** (60-second cooldown), and hanging out in active voice channels earns **10–20 XP per minute**! Reaching new levels posts a **Level Up** celebration card and unlocks automatic **Level Role Rewards**.
 
 ### 🧮 How Leveling Works
+* **Chat XP:** `15–25 XP` per message (`60s` cooldown).
+* **Voice Activity XP:** `10–20 XP` every 60 seconds while in a voice channel with **at least 2 non-bot, non-deafened members** (AFK voice channels and solo/deafened accounts are automatically excluded to prevent AFK farming).
 * Every level requires **`Current Level × 100` XP**:
   * Level 1 → Level 2: `100 XP`
   * Level 2 → Level 3: `200 XP`

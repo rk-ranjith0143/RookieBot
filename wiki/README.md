@@ -41,7 +41,7 @@ Welcome to the official **RookieBot** documentation! Every single command, butto
 ### 📈 Section III: Leveling & Virtual Economy
 | Guide | What's Inside | Commands Covered |
 | :--- | :--- | :--- |
-| **[09. Leveling & Chat XP](09-Leveling-and-XP.md)** | Chat XP (15–25 XP/min), rank progress cards, top 10 & milestone roles | `/rank`, `/leaderboard`, `/levelrole add`, `/levelrole list`, `/levelrole remove` |
+| **[09. Leveling, Chat & Voice XP](09-Leveling-and-XP.md)** | Chat XP (15–25 XP/min), Voice XP (10–20 XP/min), rank progress cards, top 10 & milestone roles | `/rank`, `/leaderboard`, `/levelrole add`, `/levelrole list`, `/levelrole remove` |
 | **[10. Virtual Economy & Shop](10-Economy-and-Shop.md)** | Wallets, richest leaderboard, daily coins, jobs, slots, rob, shop & admin eco | `/balance`, `/richest`, `/daily`, `/work`, `/pay`, `/coinflip`, `/slots`, `/rob`, `/eco give`, `/eco take`, `/shop view`, `/shop add`, `/shop remove`, `/buy`, `/inventory` |
 
 ### 💬 Section IV: Voice, Community & Automation

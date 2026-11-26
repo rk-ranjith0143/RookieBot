@@ -1,9 +1,9 @@
 import random
-from typing import Optional
+from typing import List, Optional
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from database import (
     add_user_xp,
@@ -31,13 +31,96 @@ class Leveling(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    def cog_unload(self):
+        if self.voice_xp_loop.is_running():
+            self.voice_xp_loop.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.voice_xp_loop.is_running():
+            self.voice_xp_loop.start()
+
+    async def _grant_level_rewards_and_announce(
+        self,
+        guild: discord.Guild,
+        member: discord.Member,
+        new_level: int,
+        channel: Optional[discord.abc.Messageable] = None,
+    ):
+        """Unlock level milestone roles and send a Level Up embed if a channel is writable."""
+        unlocked_roles_text = ""
+        rewards = await get_level_roles(guild.id)
+        for r in rewards:
+            if r["level"] == new_level:
+                role = guild.get_role(r["role_id"])
+                if role and isinstance(member, discord.Member):
+                    try:
+                        await member.add_roles(role, reason=f"Level {new_level} milestone reached")
+                        unlocked_roles_text += f"\n🎁 **Role Reward Unlocked:** {role.mention}!"
+                    except discord.Forbidden:
+                        pass
+
+        target_ch = channel or guild.system_channel
+        if not target_ch:
+            return
+
+        embed = discord.Embed(
+            title="🎉 Level Up!",
+            description=f"Congratulations {member.mention}! You advanced to **Level {new_level}**! 🚀{unlocked_roles_text}",
+            color=discord.Color.gold(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        try:
+            await target_ch.send(embed=embed)
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+    async def _award_voice_xp_tick(self):
+        """Award 10-20 XP per minute to active non-AFK humans in populated voice channels."""
+        for guild in self.bot.guilds:
+            afk_id = guild.afk_channel.id if guild.afk_channel else None
+            for vc in guild.voice_channels:
+                if afk_id and vc.id == afk_id:
+                    continue
+
+                eligible: List[discord.Member] = []
+                for m in vc.members:
+                    if m.bot or not m.voice:
+                        continue
+                    if m.voice.deaf or m.voice.self_deaf or m.voice.afk:
+                        continue
+                    eligible.append(m)
+
+                # Anti-AFK farming guard: require at least 2 active non-deafened humans
+                if len(eligible) < 2:
+                    continue
+
+                for member in eligible:
+                    xp_gain = random.randint(10, 20)
+                    leveled_up, new_level, _ = await add_user_xp(
+                        guild_id=guild.id,
+                        user_id=member.id,
+                        amount=xp_gain,
+                        cooldown_seconds=55.0,
+                    )
+                    if leveled_up:
+                        await self._grant_level_rewards_and_announce(guild, member, new_level, channel=vc)
+
+    @tasks.loop(seconds=60.0)
+    async def voice_xp_loop(self):
+        """Periodically award XP to members actively conversing in voice channels."""
+        await self._award_voice_xp_tick()
+
+    @voice_xp_loop.before_loop
+    async def before_voice_xp_loop(self):
+        await self.bot.wait_until_ready()
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Grant random XP for chatting (with 60-second cooldown)."""
         if message.author.bot or not message.guild:
             return
 
-        # Give random 15-25 XP
         xp_gain = random.randint(15, 25)
         leveled_up, new_level, _ = await add_user_xp(
             guild_id=message.guild.id,
@@ -46,29 +129,13 @@ class Leveling(commands.Cog):
             cooldown_seconds=60.0,
         )
 
-        if leveled_up:
-            unlocked_roles_text = ""
-            rewards = await get_level_roles(message.guild.id)
-            for r in rewards:
-                if r["level"] == new_level:
-                    role = message.guild.get_role(r["role_id"])
-                    if role and isinstance(message.author, discord.Member):
-                        try:
-                            await message.author.add_roles(role, reason=f"Level {new_level} milestone reached")
-                            unlocked_roles_text += f"\n🎁 **Role Reward Unlocked:** {role.mention}!"
-                        except discord.Forbidden:
-                            pass
-
-            embed = discord.Embed(
-                title="🎉 Level Up!",
-                description=f"Congratulations {message.author.mention}! You advanced to **Level {new_level}**! 🚀{unlocked_roles_text}",
-                color=discord.Color.gold(),
+        if leveled_up and isinstance(message.author, discord.Member):
+            await self._grant_level_rewards_and_announce(
+                message.guild,
+                message.author,
+                new_level,
+                channel=message.channel,
             )
-            embed.set_thumbnail(url=message.author.display_avatar.url)
-            try:
-                await message.channel.send(embed=embed)
-            except discord.HTTPException:
-                pass
 
     @app_commands.command(name="rank", description="Check your current level, XP, and server rank")
     @app_commands.describe(member="Member whose rank you want to inspect (defaults to you)")

@@ -100,7 +100,7 @@ class HelpCategorySelect(discord.ui.Select):
             embed.add_field(
                 name="XP & Gamification",
                 value=(
-                    "• `/rank [member]` - Inspect rank card with visual progress bar.\n"
+                    "• `/rank [member]` - Inspect rank card with visual progress bar (Chat + Voice XP).\n"
                     "• `/leaderboard` - Top 10 most active community members.\n"
                     "• `/levelrole add [level] [role]` - Reward members with roles when they reach levels.\n"
                     "• `/levelrole list` - View all level milestone rewards."

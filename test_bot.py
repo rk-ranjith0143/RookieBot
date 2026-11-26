@@ -1313,6 +1313,25 @@ class TestRookieBot(unittest.IsolatedAsyncioTestCase):
         await lvl.levelrole_list.callback(lvl, interaction)
         await lvl.levelrole_remove.callback(lvl, interaction, level=5)
 
+        # Voice Activity XP check (requires >=2 active non-deafened humans)
+        guild.afk_channel = None
+        guild.system_channel = channel
+        guild.voice_channels = [mock_voice]
+        user.voice = MagicMock(deaf=False, self_deaf=False, afk=False)
+        target_user.voice = MagicMock(deaf=False, self_deaf=False, afk=False)
+        mock_voice.members = [user, target_user]
+        self.bot._connection._guilds[guild.id] = guild
+        try:
+            await lvl._award_voice_xp_tick()
+            _, _, user_xp, _ = await database.get_user_level_data(guild.id, user.id)
+            _, _, target_xp, _ = await database.get_user_level_data(guild.id, target_user.id)
+            self.assertGreater(user_xp, 0)
+            self.assertGreater(target_xp, 0)
+        finally:
+            self.bot._connection._guilds.pop(guild.id, None)
+            guild.voice_channels = []
+            user.voice = None
+
         # -------------------------------------------------------------
         # Embeds Cog Commands
         # -------------------------------------------------------------
